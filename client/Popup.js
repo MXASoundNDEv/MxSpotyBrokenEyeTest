@@ -371,3 +371,139 @@ function ShowOptionsModal(Devices=[], onConfirm) {
     });
 }
 
+// Modal de chargement
+let loadingModal = null;
+
+function showLoadingModal(message = 'Chargement en cours...', steps = []) {
+    // Éviter les doublons
+    if (loadingModal) {
+        hideLoadingModal();
+    }
+
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.zIndex = '9999';
+    overlay.id = 'loading-modal-overlay';
+
+    const modal = document.createElement('div');
+    modal.style.background = 'var(--panel, #1a1a2e)';
+    modal.style.borderRadius = '15px';
+    modal.style.padding = '30px';
+    modal.style.minWidth = '350px';
+    modal.style.maxWidth = '90vw';
+    modal.style.color = 'var(--text, #ffffff)';
+    modal.style.boxShadow = '0 20px 60px rgba(0, 0, 0, 0.5)';
+    modal.style.textAlign = 'center';
+    modal.style.border = '2px solid var(--soft, #4a4a6a)';
+
+    // Titre
+    const title = document.createElement('h2');
+    title.style.marginBottom = '20px';
+    title.style.color = 'var(--text, #ffffff)';
+    title.style.fontSize = '1.5rem';
+    title.innerHTML = '🎵 Spotify Blind Test';
+    modal.appendChild(title);
+
+    // Message principal
+    const messageEl = document.createElement('div');
+    messageEl.id = 'loading-message';
+    messageEl.style.fontSize = '1.1rem';
+    messageEl.style.marginBottom = '25px';
+    messageEl.style.color = 'var(--text-secondary, #cccccc)';
+    messageEl.textContent = message;
+    modal.appendChild(messageEl);
+
+    // Spinner animé
+    const spinner = document.createElement('div');
+    spinner.style.width = '50px';
+    spinner.style.height = '50px';
+    spinner.style.border = '4px solid rgba(255, 255, 255, 0.1)';
+    spinner.style.borderTop = '4px solid var(--soft, #4a4a6a)';
+    spinner.style.borderRadius = '50%';
+    spinner.style.animation = 'spin 1s linear infinite';
+    spinner.style.margin = '0 auto 20px auto';
+    modal.appendChild(spinner);
+
+    // Ajouter l'animation CSS pour le spinner
+    if (!document.getElementById('loading-spinner-styles')) {
+        const style = document.createElement('style');
+        style.id = 'loading-spinner-styles';
+        style.textContent = `
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // Liste des étapes si fournie
+    if (steps.length > 0) {
+        const stepsList = document.createElement('div');
+        stepsList.id = 'loading-steps';
+        stepsList.style.textAlign = 'left';
+        stepsList.style.marginTop = '15px';
+        stepsList.style.padding = '15px';
+        stepsList.style.background = 'rgba(255, 255, 255, 0.05)';
+        stepsList.style.borderRadius = '8px';
+        stepsList.style.fontSize = '0.9rem';
+
+        steps.forEach((step, index) => {
+            const stepEl = document.createElement('div');
+            stepEl.id = `loading-step-${index}`;
+            stepEl.style.marginBottom = '8px';
+            stepEl.style.display = 'flex';
+            stepEl.style.alignItems = 'center';
+            stepEl.style.opacity = '0.5';
+            stepEl.innerHTML = `
+                <span class="step-icon" style="margin-right: 10px; width: 20px;">⏳</span>
+                <span class="step-text">${step}</span>
+            `;
+            stepsList.appendChild(stepEl);
+        });
+
+        modal.appendChild(stepsList);
+    }
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    loadingModal = overlay;
+
+    return {
+        updateMessage: (newMessage) => {
+            const msgEl = document.getElementById('loading-message');
+            if (msgEl) msgEl.textContent = newMessage;
+        },
+        completeStep: (stepIndex) => {
+            const stepEl = document.getElementById(`loading-step-${stepIndex}`);
+            if (stepEl) {
+                stepEl.style.opacity = '1';
+                const icon = stepEl.querySelector('.step-icon');
+                if (icon) icon.textContent = '✅';
+            }
+        },
+        updateStep: (stepIndex, newText) => {
+            const stepEl = document.getElementById(`loading-step-${stepIndex}`);
+            if (stepEl) {
+                const textEl = stepEl.querySelector('.step-text');
+                if (textEl) textEl.textContent = newText;
+            }
+        }
+    };
+}
+
+function hideLoadingModal() {
+    if (loadingModal) {
+        document.body.removeChild(loadingModal);
+        loadingModal = null;
+    }
+}
+

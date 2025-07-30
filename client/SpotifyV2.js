@@ -110,8 +110,21 @@ addEventListener('DOMContentLoaded', () => {
 // Player initialization
 async function initPlayer() {
     //console.log('🔄 Initialisation du Spotify Player...');
+    
+    // Afficher la modal de chargement pour l'initialisation du player
+    const loadingSteps = [
+        'Initialisation du SDK Spotify...',
+        'Connexion au lecteur...',
+        'Configuration du périphérique...'
+    ];
+    
+    const loader = showLoadingModal('Connexion à Spotify...', loadingSteps);
+    
     try {
         window.onSpotifyWebPlaybackSDKReady = () => {
+            loader.completeStep(0);
+            loader.updateMessage('Création du lecteur Spotify...');
+            
             appState.player = new Spotify.Player({
                 name: CONFIG.PLAYER_NAME,
                 getOAuthToken: cb => cb(appState.token),
@@ -119,8 +132,18 @@ async function initPlayer() {
             });
 
             appState.player.addListener('ready', ({ device_id }) => {
+                loader.completeStep(1);
+                loader.updateMessage('Configuration du périphérique...');
+                
                 appState.deviceId = device_id;
-                initUI();
+                loader.completeStep(2);
+                
+                // Petite pause pour montrer que l'initialisation est terminée
+                setTimeout(() => {
+                    hideLoadingModal();
+                    initUI();
+                }, 300);
+                
                 //console.log('✅ SDK Ready. Device ID:', device_id);
                 appState.player.activateElement().catch(err => 
                     console.warn('Activation requise par l\'utilisateur:', err)
@@ -129,6 +152,7 @@ async function initPlayer() {
 
             appState.player.addListener('not_ready', ({ device_id }) => {
                 console.warn('❌ SDK Not Ready. Device ID:', device_id);
+                hideLoadingModal();
                 showPopup({
                     text: "SDK Not Ready. Veuillez vérifier votre connexion.",
                     type: "error",
@@ -140,12 +164,22 @@ async function initPlayer() {
             // Error listeners
             const errorTypes = ['initialization_error', 'authentication_error', 'account_error', 'playback_error'];
             errorTypes.forEach(type => 
-                appState.player.addListener(type, error => console.error(`${type}:`, error))
+                appState.player.addListener(type, error => {
+                    console.error(`${type}:`, error);
+                    hideLoadingModal();
+                    showPopup({
+                        text: `Erreur Spotify: ${type.replace('_', ' ')}`,
+                        type: "error",
+                        position: "center",
+                        duration: 5000
+                    });
+                })
             );
 
             appState.player.connect();
         };
     } catch (error) {
+        hideLoadingModal();
         utils.showError('Erreur lors de l\'initialisation du player Spotify', error);
     }
 }
@@ -159,14 +193,29 @@ async function loadPlaylist(id) {
         return;
     }
     
+    // Afficher la modal de chargement pour le chargement de la playlist
+    const loadingSteps = [
+        'Récupération de la playlist...',
+        'Traitement des chansons...',
+        'Chargement des détails...',
+        'Finalisation...'
+    ];
+    
+    const loader = showLoadingModal('Chargement de la playlist...', loadingSteps);
+    
     // Arrêter l'autoswipe précédent s'il est en cours
     if (appState.autoSwipe.status === 'running') {
         stopAutoSwipe();
     }
     
     try {
+        // Étape 1: Récupérer la playlist
         const res = await fetch(`/api/playlist/${id}?token=${appState.token}`);
         const data = await res.json();
+        loader.completeStep(0);
+        
+        // Étape 2: Traitement des options
+        loader.updateMessage('Traitement des options de playlist...');
         
         // Récupérer les options utilisateur pour le mélange et le nombre max
         const userOptions = utils.getUserOptions();
@@ -193,13 +242,23 @@ async function loadPlaylist(id) {
             console.log(`✂️ Playlist limitée à ${maxSongs} chansons (était ${data.length})`);
         }
         
+        loader.completeStep(1);
+        
         appState.playlist = processedPlaylist;
         appState.currentIndex = 0;
+        
+        // Étape 3: Chargement des détails des chansons
+        loader.updateMessage('Chargement des détails des chansons...');
         
         // Créer l'historique complet avec toutes les chansons de la playlist
         // Récupérer les données détaillées pour chaque track
         const playlistHistoryPromises = appState.playlist.map(async (track, index) => {
             try {
+                // Mettre à jour le message pour montrer le progrès
+                if (index % 5 === 0) { // Mise à jour tous les 5 éléments pour éviter trop de updates
+                    loader.updateMessage(`Chargement des détails... (${index + 1}/${appState.playlist.length})`);
+                }
+                
                 // Extraire l'ID Spotify de l'URI (spotify:track:ID)
                 const trackId = track.uri.split(':').pop();
                 const trackDetails = await getTrackIDData(trackId);
@@ -235,11 +294,21 @@ async function loadPlaylist(id) {
         
         // Attendre que toutes les données soient récupérées
         appState.playlistHistory = await Promise.all(playlistHistoryPromises);
+        loader.completeStep(2);
+        
+        // Étape 4: Finalisation
+        loader.updateMessage('Finalisation du chargement...');
         
         // Mettre à jour l'affichage de l'historique
         updateHistoryPanel(appState.playlistHistory);
         
         console.log(`✅ Playlist chargée: ${appState.playlist.length} chansons (mélangée: ${shouldShuffle})`);
+        
+        loader.completeStep(3);
+        
+        // Petite pause pour montrer que le chargement est terminé
+        await new Promise(resolve => setTimeout(resolve, 500));
+        hideLoadingModal();
         
         if (appState.playlist[0]) {
             playTrack(appState.playlist[0]);
@@ -252,6 +321,7 @@ async function loadPlaylist(id) {
             }
         }
     } catch (error) {
+        hideLoadingModal();
         utils.showError('Erreur lors du chargement de la playlist', error);
     }
 }
