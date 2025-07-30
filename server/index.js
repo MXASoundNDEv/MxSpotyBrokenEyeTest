@@ -1,6 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import fetch from 'node-fetch';
+const fetch = global.fetch;
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import querystring from 'querystring';
