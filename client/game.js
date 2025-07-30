@@ -12,20 +12,22 @@ songInput.addEventListener('keydown', async (event) => {
     if (event.key === 'Enter') {
         const songName = songInput.value.trim();
         console.log('🔍 Vérification de la chanson : %s', songName);
-        if (!songName) {
-            // currentDisplay.innerText = '🔍 Tapez le nom de la chanson...';
-            return;
-        }
+        if (!songName) return;
 
-        const currentTrack = await getCurrentTrack();
-        if (!currentTrack) {
-            // currentDisplay.innerText = '❌ Aucune chanson en cours de lecture';
-            return;
-        }
+        const currentTrack = await getCurrentTrackData();
+        if (!currentTrack) return;
 
-        console.log('🎵 check Chanson actuelle :', checkSongMatch(songName, currentTrack));
-        if (checkSongMatch(songName, currentTrack)) {
-            // currentDisplay.innerText = `✅ Correct ! La chanson est : ${currentTrack.name}`;\
+        // Appel au serveur pour vérifier la correspondance
+        const res = await fetch('/api/check-song', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ songName, currentTrack })
+        });
+
+        const { match } = await res.json();
+
+        if (match) {
+            thumbnail.style.filter = 'none'; // Remove blur effect
             showPopup({
                 text: `✅ Correct ! La chanson est : ${currentTrack.name}`,
                 type: 'success',
@@ -40,7 +42,6 @@ songInput.addEventListener('keydown', async (event) => {
                 }
             });
         } else {
-            // currentDisplay.innerText = `❌ Incorrect ! Essayez encore...`;
             showPopup({
                 text: `❌ Incorrect ! Essayez encore...`,
                 type: 'error',
@@ -49,6 +50,7 @@ songInput.addEventListener('keydown', async (event) => {
                 needValidate: false
             });
         }
+
         songInput.value = '';
     }
 });

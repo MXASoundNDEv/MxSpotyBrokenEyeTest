@@ -24,6 +24,17 @@ function isClose(word, target, tolerance = 2) {
   return distance <= tolerance;
 }
 
+export function checkSongMatch(songName, currentSong) {
+  if (!currentSong || !songName) return false;
+
+  return (
+    isClose(songName, currentSong.name, 2) ||
+    isClose(songName, currentSong.name.replace(/ - .*$/, ''), 2) ||
+    isClose(songName, currentSong.name.replace(/ \(.+\)$/, ''), 2) ||
+    isClose(songName, currentSong.name.replace(/ \[.+\]$/, ''), 2)
+  );
+}
+
 // // Exemple d’utilisation :
 // const motJoueur = "adèle";         // Entrée du joueur
 // const motCorrect = "Adele";        // Réponse attendue

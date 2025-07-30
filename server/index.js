@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import querystring from 'querystring';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { checkSongMatch } from './Levenshtein.js'; // Assuming you have a Levenshtein.js for helper functions
 
 dotenv.config();
 const app = express();
@@ -17,6 +18,7 @@ const __dirname = path.dirname(__filename);
 // Middleware
 app.use(cors());
 app.use(cookieParser());
+app.use(express.json());
 app.use(express.static(path.join(__dirname, '../client')));
 
 // Spotify credentials
@@ -139,6 +141,111 @@ app.get('/api/me/playlists', async (req, res) => {
     res.status(500).json({ error: 'Erreur serveur', details: err.message });
   }
 });
+
+// GET current track
+app.get('/api/me/player', async (req, res) => {
+  const token = req.query.token;
+
+  if (!token) {
+    return res.status(400).json({ error: 'Token manquant' });
+  }
+
+  try {
+    const response = await fetch('https://api.spotify.com/v1/me/player', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('❌ Erreur Spotify /me/player:', response.status, text);
+      return res.status(response.status).send(text);
+    }
+
+    const data = await response.json();
+
+    if (!data || !data.item) {
+      return res.status(204).send(); // Aucun morceau en cours
+    }
+
+    res.json({
+      name: data.item.name,
+      uri: data.item.uri,
+      durationMs: data.item.duration_ms,
+      positionMs: data.progress_ms,
+      image: data.item.album?.images?.[0]?.url || null
+    });
+
+  } catch (err) {
+    console.error('[🔥] Erreur serveur /api/me/player:', err);
+    res.status(500).json({ error: 'Erreur serveur', details: err.message });
+  }
+});
+
+// GET track by ID
+app.get('/api/tracks/:id', async (req, res) => {
+  const accessToken = req.query.token;
+  const trackId = req.params.id;
+  const response = await fetch(`https://api.spotify.com/v1/tracks/${trackId}`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  const data = await response.json();
+  res.json(data);
+});
+
+// Function to check if song matches with Levenshtein distance
+app.post('/api/check-song', (req, res) => {
+  const { songName, currentTrack } = req.body;
+
+  if (!songName || !currentTrack) {
+    return res.status(400).json({ match: false, error: 'Chanson ou donnée manquante' });
+  }
+
+  const match = checkSongMatch(songName, currentTrack);
+  res.json({ match });
+});
+
+// PUT play track
+app.put('/api/play', async (req, res) => {
+  const { device_id, token } = req.query;
+  const { uris } = req.body;
+
+  if (!uris || !Array.isArray(uris)) {
+    return res.status(400).json({ error: 'URIs manquants ou invalides dans le corps de la requête' });
+  }
+
+  try {
+    const response = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${device_id}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ uris })
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('[Spotify API Error]', response.status, text);
+      return res.status(response.status).send(text);
+    }
+
+    res.sendStatus(204);
+  } catch (err) {
+    console.error('[🔥] Erreur serveur /api/play:', err);
+    res.status(500).json({ error: 'Erreur serveur', details: err.message });
+  }
+});
+
+// PUT seek
+app.put('/api/seek', async (req, res) => {
+  const { position_ms, token } = req.query;
+  const response = await fetch(`https://api.spotify.com/v1/me/player/seek?position_ms=${position_ms}`, {
+    method: 'PUT',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  res.sendStatus(response.status);
+});
+
 
 // 📚 Fonction helper
 async function getPlaylistTracks(playlistId, token) {

@@ -36,3 +36,5 @@ other/
 *.pidfile.lock
 *.pidfile.lockfile
 testapi.cmd
+Old.*
+*.old
