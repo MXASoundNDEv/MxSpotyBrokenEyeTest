@@ -205,6 +205,7 @@ function SpotifyconnectModal() {
     title: 'Bienvenue',
     content: [
         'Connecte-toi à ton compte Spotify pour jouer !',
+        'Il te faut un compte Spotify Premium pour utiliser cette fonctionnalité.',
         loginSpotifyBtn
     ],
     disablebuttons: true
