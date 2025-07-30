@@ -2,10 +2,11 @@ name: Test Spotify Server
 
 on:
   push:
-    branches: [main]
+    branches:
+      - RunTest
   pull_request:
-    branches: [main]
-
+    branches:
+      - RunTest
 jobs:
   test:
     runs-on: ubuntu-latest
