@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0a0a1a">
+    <title>Spotify Blind Test Mobile</title>
+    <link rel="stylesheet" href="mobile.css">
+    <script src="https://sdk.scdn.co/spotify-player.js"></script>
+    
+    <!-- Desktop fallback link -->
+    <script>
+        // Lien vers version desktop si souhaité
+        window.switchToDesktop = () => {
+            window.location.href = '/desktop';
+        };
+        
+        // Fonction globale requise par Spotify SDK
+        window.onSpotifyWebPlaybackSDKReady = () => {
+            console.log('🎵 Spotify Web Playback SDK Ready');
+            if (window.initializeSpotify) {
+                window.initializeSpotify();
+            }
+        };
+    </script>
+</head>
+<body>
+    <!-- Aurora Background Effects -->
+    <div class="aurora-bg">
+        <div class="aurora-wave"></div>
+        <div class="aurora-wave"></div>
+        <div class="aurora-wave"></div>
+    </div>
+
+    <!-- Header fixe avec compte Spotify et options -->
+    <header class="mobile-header">
+        <div class="spotify-account">
+            <img id="mobilePlayerAvatar" src="https://i.scdn.co/image/ab6775700000ee850afe9be4724435a51d4644f8" alt="Spotify Account" class="account-avatar" />
+            <div class="account-status">
+                <div id="mobilePlayerName" class="account-name">Connexion...</div>
+                <div class="account-indicator" id="accountIndicator">�</div>
+            </div>
+        </div>
+        
+        <button id="mobileOptionsBtn" class="options-button">
+            <span class="options-icon">⚙️</span>
+        </button>
+    </header>
+
+    <!-- Section historique -->
+    <section class="history-section">
+        <div class="history-header">
+            <h3>📚 Historique</h3>
+            <div class="history-stats">
+                <span class="stat-discovered" id="mobileDiscoveredCount">0</span>/<span class="stat-total" id="mobileTotalCount">0</span>
+            </div>
+        </div>
+        <div class="history-grid" id="mobileHistoryGrid">
+            <!-- L'historique sera généré dynamiquement -->
+        </div>
+    </section>
+
+    <!-- Section principale avec thumbnail -->
+    <main class="main-section">
+        <div class="thumbnail-container" id="mobileThumbnailContainer">
+            <div class="thumbnail-glow"></div>
+            <img id="mobileThumbnail" src="https://i.scdn.co/image/ab67616d00001e029c11e6241d59940a0157c75a" alt="Album Cover" class="thumbnail" />
+            <div class="thumbnail-overlay">
+                <div class="mystery-indicator">
+                    <span class="mystery-icon">🎭</span>
+                    <span class="mystery-text">Mystère</span>
+                </div>
+            </div>
+            <div class="autoswipe-pulse" id="autoswipePulse"></div>
+        </div>
+        
+        <!-- Informations de la chanson -->
+        <div class="song-info">
+            <div id="mobileSongTitle" class="song-title">🎵 Chanson mystère</div>
+            <div id="mobileSongArtist" class="song-artist">🎤 Artiste mystère</div>
+        </div>
+    </main>
+
+    <!-- Input fixe en bas -->
+    <footer class="input-footer">
+        <div class="input-container">
+            <!-- Barre de progression autoswipe autour de l'input -->
+            <div class="autoswipe-ring" id="autoswipeRing">
+                <div class="autoswipe-progress" id="autoswipeProgress"></div>
+            </div>
+            
+            <div class="input-wrapper">
+                <input id="mobileSongName" type="text" placeholder="🎯 Tape ta réponse ici..." maxlength="100" autocomplete="off" spellcheck="false" class="song-input" />
+                <div class="input-glow"></div>
+            </div>
+            
+            <!-- Temps restant autoswipe -->
+            <div class="autoswipe-timer" id="autoswipeTimer" style="display: none;">
+                <span id="autoswipeTimeRemaining">10s</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modal Options -->
+    <div id="optionsModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>⚙️ Options</h3>
+                <button id="closeModal" class="close-button">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="option-item" id="loginBtn" style="display: none;">
+                    <span class="option-icon">🔑</span>
+                    <span class="option-text">Se connecter à Spotify</span>
+                </div>
+                
+                <div class="option-item" id="PlaylistDivBtn">
+                    <span class="option-icon">🎵</span>
+                    <span class="option-text">Playlist</span>
+                </div>
+                
+                <div class="option-item" id="PlayerDivBtn">
+                    <span class="option-icon">🎧</span>
+                    <span class="option-text">Lecteur</span>
+                </div>
+                
+                <div class="option-item" id="OptionsDivBtn">
+                    <span class="option-icon">⚙️</span>
+                    <span class="option-text">Paramètres</span>
+                </div>
+                
+                <div class="option-item autoswipe-toggle" id="autoswipe">
+                    <span class="option-icon">🤖</span>
+                    <span class="option-text">AutoSwipe</span>
+                    <span id="autoswipeStatus" class="autoswipe-status">⏸️</span>
+                </div>
+                
+                <div class="option-item" onclick="switchToDesktop()">
+                    <span class="option-icon">🖥️</span>
+                    <span class="option-text">Version Desktop</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading spinner -->
+    <div id="loadingSpinner" class="loading-spinner" style="display: none;">
+        <div class="spinner"></div>
+        <div class="loading-text">Connexion Spotify...</div>
+    </div>
+
+    <!-- Scripts - dans l'ordre d'importance -->
+    <script src="Popup.js"></script>
+    <script src="SpotifyV2.js"></script>
+    <script src="game.js"></script>
+    <script src="mobile.js"></script>
+    
+    <!-- Chargement des scripts existants si nécessaire -->
+    <script>
+        // Récupération du token depuis l'URL (après OAuth)
+        function getTokenFromURL() {
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            return {
+                access_token: hashParams.get('access_token'),
+                refresh_token: hashParams.get('refresh_token')
+            };
+        }
+        
+        // Fonction pour initialiser le mobile après le chargement du système principal
+        function initializeMobileInterface() {
+            console.log('🎯 Initialisation interface mobile...');
+            
+            // Utiliser la nouvelle fonction globale pour récupérer le token
+            let token = null;
+            if (window.getSpotifyToken) {
+                token = window.getSpotifyToken();
+            } else {
+                // Fallback vers l'ancienne méthode
+                const tokens = getTokenFromURL();
+                const storedToken = localStorage.getItem('access_token') || localStorage.getItem('spotify_access_token');
+                token = tokens.access_token || storedToken;
+            }
+            
+            if (token) {
+                console.log('🔐 Token trouvé, initialisation Spotify...');
+                
+                // Nettoyer l'URL si nécessaire
+                if (window.location.hash.includes('access_token')) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+                
+                // Mettre à jour le token dans le système Spotify
+                if (window.updateSpotifyToken) {
+                    window.updateSpotifyToken(token);
+                } else {
+                    // Fallback pour ancienne méthode
+                    localStorage.setItem('access_token', token);
+                    localStorage.setItem('spotify_access_token', token);
+                    if (window.appState) {
+                        window.appState.token = token;
+                    }
+                }
+                
+                // Initialiser Spotify
+                if (window.initializeSpotify) {
+                    window.initializeSpotify();
+                } else if (window.initUI) {
+                    window.initUI();
+                } else if (window.initPlayer) {
+                    window.initPlayer();
+                } else {
+                    console.log('⚠️ Aucune fonction d\'initialisation trouvée');
+                }
+                
+            } else {
+                // Pas de token - afficher le bouton de connexion
+                console.log('❌ Aucun token Spotify trouvé');
+                document.getElementById('loginBtn').style.display = 'flex';
+                
+                // Mettre à jour l'interface
+                const indicator = document.getElementById('accountIndicator');
+                if (indicator) {
+                    indicator.textContent = '🔴';
+                }
+                
+                const playerName = document.getElementById('mobilePlayerName');
+                if (playerName) {
+                    playerName.textContent = 'Non connecté';
+                }
+            }
+        }
+        
+        // Fonction globale pour initialiser l'app (créée spécialement pour mobile)
+        window.initApp = function(token) {
+            console.log('🚀 initApp appelé avec token:', token ? 'présent' : 'absent');
+            
+            if (token) {
+                localStorage.setItem('access_token', token);
+                if (window.appState) {
+                    window.appState.token = token;
+                }
+            }
+            
+            // Appeler l'initialisation principale
+            if (window.initUI) {
+                window.initUI();
+            } else if (window.initPlayer) {
+                window.initPlayer();
+            } else {
+                console.error('❌ Aucune fonction d\'initialisation trouvée');
+            }
+        };
+        
+        // Gestion du bouton de connexion
+        document.addEventListener('DOMContentLoaded', () => {
+            const loginBtn = document.getElementById('loginBtn');
+            if (loginBtn) {
+                loginBtn.addEventListener('click', () => {
+                    window.location.href = '/login';
+                });
+            }
+        });
+    </script>
+    
+    <!-- Script d'initialisation mobile uniquement -->
+    <script>
+        // Chargement des scripts requis de façon asynchrone pour éviter les doublons
+        const loadScript = (src) => {
+            return new Promise((resolve, reject) => {
+                // Vérifier si le script est déjà chargé
+                if (document.querySelector(`script[src="${src}"]`)) {
+                    resolve();
+                    return;
+                }
+                
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        };
+        
+        // Charger les scripts dans l'ordre
+        Promise.all([
+            loadScript('SpotifyV2.js'),
+            loadScript('game.js'),
+            loadScript('mobile.js')
+        ]).then(() => {
+            console.log('🎯 Tous les scripts mobile chargés');
+            
+            // Initialiser la compatibilité mobile d'abord
+            if (typeof initMobileCompatibility === 'function') {
+                initMobileCompatibility();
+            }
+            
+            // Puis initialiser l'interface mobile
+            if (typeof initializeMobileInterface === 'function') {
+                initializeMobileInterface();
+            }
+        }).catch(err => {
+            console.error('❌ Erreur chargement scripts:', err);
+        });
+    </script>
+</body>
+</html>
