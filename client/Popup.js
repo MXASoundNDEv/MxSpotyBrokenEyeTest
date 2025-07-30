@@ -257,3 +257,118 @@ function showPlaylistSelector(playlists = [], onConfirm) {
     });
 }
 
+function ShowOptionsModal(Devices=[], onConfirm) {
+    let SongTime = 10;// seconds
+    let PlayingDevice = null;
+    let RandomSong = false;
+    let PlaylistMaxSongs = 10;
+    let Optionlist = {
+        SongTime,
+        PlayingDevice,
+        RandomSong,
+        PlaylistMaxSongs
+    };
+
+    const wrapper = document.createElement('div');
+    wrapper.style.display = 'flex';
+    wrapper.style.flexDirection = 'column';
+    wrapper.style.gap = '15px';
+
+    // Temps d'écoute
+    const timeContainer = document.createElement('div');
+    const timeLabel = document.createElement('label');
+    timeLabel.innerText = 'Temps d’écoute (sec) :';
+    timeLabel.style.marginBottom = '5px';
+    const songTimeInput = document.createElement('input');
+    songTimeInput.type = 'number';
+    songTimeInput.value = SongTime;
+    songTimeInput.style.padding = '8px';
+    songTimeInput.style.borderRadius = '8px';
+    songTimeInput.style.border = 'none';
+    songTimeInput.style.background = '#2a2a50';
+    songTimeInput.style.color = 'white';
+    timeContainer.appendChild(timeLabel);
+    timeContainer.appendChild(songTimeInput);
+
+    // Nombre maximum de chansons dans la playlist
+    const playlistContainer = document.createElement('div');
+    const playlistLabel = document.createElement('label');
+    playlistLabel.innerText = 'Nombre maximum de chansons dans la playlist :';
+    playlistLabel.style.marginBottom = '5px';
+    const playlistInput = document.createElement('input');
+    playlistInput.type = 'number';
+    playlistInput.value = PlaylistMaxSongs;
+    playlistInput.style.padding = '8px';
+    playlistInput.style.borderRadius = '8px';
+    playlistInput.style.border = 'none';
+    playlistInput.style.background = '#2a2a50';
+    playlistInput.style.color = 'white';
+    playlistContainer.appendChild(playlistLabel);
+    playlistContainer.appendChild(playlistInput);
+
+    // Choix du périphérique
+    const deviceContainer = document.createElement('div');
+    const deviceLabel = document.createElement('label');
+    deviceLabel.innerText = 'Périphérique de lecture :';
+    deviceLabel.style.marginBottom = '5px';
+    const deviceSelect = document.createElement('select');
+    deviceSelect.style.padding = '8px';
+    deviceSelect.style.borderRadius = '8px';
+    deviceSelect.style.border = 'none';
+    deviceSelect.style.background = '#2a2a50';
+    deviceSelect.style.color = 'white';
+    deviceSelect.style.width = '100%';
+
+    Devices.forEach(dev => {
+        const opt = document.createElement('option');
+        opt.value = dev.id;
+        opt.text = dev.name;
+        if (PlayingDevice && PlayingDevice.id === dev.id) opt.selected = true;
+        deviceSelect.appendChild(opt);
+    });
+
+    deviceContainer.appendChild(deviceLabel);
+    deviceContainer.appendChild(deviceSelect);
+
+    // Lecture aléatoire
+    const randomContainer = document.createElement('div');
+    randomContainer.style.display = 'flex';
+    randomContainer.style.alignItems = 'center';
+    randomContainer.style.gap = '10px';
+    const randomLabel = document.createElement('label');
+    randomLabel.innerText = 'Lecture aléatoire :';
+    const randomToggle = document.createElement('input');
+    randomToggle.type = 'checkbox';
+    randomToggle.checked = RandomSong;
+    randomToggle.style.transform = 'scale(1.5)';
+    randomContainer.appendChild(randomLabel);
+    randomContainer.appendChild(randomToggle);
+
+    // Ajouter tout dans le wrapper
+    wrapper.appendChild(playlistContainer);
+    wrapper.appendChild(timeContainer);
+    wrapper.appendChild(deviceContainer);
+    wrapper.appendChild(randomContainer);
+
+    // Afficher la modal avec les boutons
+    showModal({
+        title: 'Options',
+        content: wrapper,
+        onConfirm: () => {
+            SongTime = parseInt(songTimeInput.value) || 10;
+            const selectedId = deviceSelect.value;
+            PlayingDevice = Devices.find(dev => dev.id === selectedId) || null;
+            RandomSong = randomToggle.checked;
+            PlaylistMaxSongs = parseInt(playlistInput.value) || 10;
+            if (typeof onConfirm === 'function') onConfirm({
+                Optionlist: {
+                    SongTime,
+                    PlayingDevice,
+                    RandomSong,
+                    PlaylistMaxSongs
+                }
+            });
+        }
+    });
+}
+
