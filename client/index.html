@@ -6,6 +6,20 @@
     <title>Spotify Blind Test - Cyberpunk Edition</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://sdk.scdn.co/spotify-player.js"></script>
+    
+    <!-- Mobile Detection Script -->
+    <script>
+        // Détection mobile côté client (backup si le serveur n'a pas redirigé)
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                   (window.innerWidth <= 768 && window.innerHeight <= 1024);
+        }
+        
+        // Redirection mobile si nécessaire
+        if (isMobileDevice() && !window.location.pathname.includes('/desktop')) {
+            window.location.href = '/mobile';
+        }
+    </script>
 </head>
 <body>
     <!-- Aurora Background Effects -->

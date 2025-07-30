@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Détection Mobile</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #0a0a1a;
+            color: white;
+        }
+        .device-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .button {
+            background: #5b3cc4;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            margin: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            background: #7e57c2;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Détection Mobile</h1>
+    
+    <div class="device-info">
+        <h2>Informations de l'appareil :</h2>
+        <p><strong>User Agent:</strong> <span id="userAgent"></span></p>
+        <p><strong>Largeur d'écran:</strong> <span id="screenWidth"></span>px</p>
+        <p><strong>Hauteur d'écran:</strong> <span id="screenHeight"></span>px</p>
+        <p><strong>Type détecté:</strong> <span id="deviceType"></span></p>
+        <p><strong>Orientation:</strong> <span id="orientation"></span></p>
+    </div>
+
+    <div>
+        <h2>Navigation :</h2>
+        <a href="/" class="button">🏠 Accueil (Auto-détection)</a>
+        <a href="/mobile" class="button">📱 Version Mobile</a>
+        <a href="/desktop" class="button">🖥️ Version Desktop</a>
+        <a href="/mobile-demo.html" class="button">🧪 Démo Mobile</a>
+    </div>
+
+    <div>
+        <h2>État de la détection :</h2>
+        <div id="detectionResult"></div>
+    </div>
+
+    <script>
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                   (window.innerWidth <= 768 && window.innerHeight <= 1024);
+        }
+
+        function updateDeviceInfo() {
+            document.getElementById('userAgent').textContent = navigator.userAgent;
+            document.getElementById('screenWidth').textContent = window.innerWidth;
+            document.getElementById('screenHeight').textContent = window.innerHeight;
+            document.getElementById('orientation').textContent = 
+                window.innerHeight > window.innerWidth ? 'Portrait' : 'Paysage';
+            
+            const isMobile = isMobileDevice();
+            document.getElementById('deviceType').textContent = isMobile ? '📱 Mobile' : '🖥️ Desktop';
+            document.getElementById('deviceType').style.color = isMobile ? '#4caf50' : '#2196f3';
+
+            // Résultat de détection
+            const resultDiv = document.getElementById('detectionResult');
+            if (isMobile) {
+                resultDiv.innerHTML = `
+                    <div style="color: #4caf50; font-weight: bold;">
+                        ✅ Appareil mobile détecté !<br>
+                        → Redirection automatique vers /mobile
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div style="color: #2196f3; font-weight: bold;">
+                        🖥️ Appareil desktop détecté<br>
+                        → Interface desktop normale
+                    </div>
+                `;
+            }
+        }
+
+        // Mise à jour initiale
+        updateDeviceInfo();
+
+        // Mise à jour lors du redimensionnement
+        window.addEventListener('resize', updateDeviceInfo);
+        window.addEventListener('orientationchange', () => {
+            setTimeout(updateDeviceInfo, 500);
+        });
+
+        // Test de redirection
+        setTimeout(() => {
+            if (isMobileDevice() && !window.location.pathname.includes('/test-detection.html')) {
+                const banner = document.createElement('div');
+                banner.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    left: 20px;
+                    right: 20px;
+                    background: rgba(76, 175, 80, 0.9);
+                    color: white;
+                    padding: 15px;
+                    border-radius: 10px;
+                    text-align: center;
+                    z-index: 1000;
+                    animation: slideDown 0.5s ease;
+                `;
+                banner.innerHTML = `
+                    🚀 Mobile détecté ! Vous seriez redirigé vers l'interface mobile.<br>
+                    <small>Cette page est uniquement pour tester la détection.</small>
+                `;
+                document.body.appendChild(banner);
+
+                // Animation CSS
+                const style = document.createElement('style');
+                style.textContent = `
+                    @keyframes slideDown {
+                        from { transform: translateY(-100%); opacity: 0; }
+                        to { transform: translateY(0); opacity: 1; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

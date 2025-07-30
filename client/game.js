@@ -1,4 +1,4 @@
-const songInput = document.getElementById('songName');
+const songInput = document.getElementById('songName') || document.getElementById('mobileSongName');
 const OptionsDiv = document.getElementById('OptionsDivBtn');
 const PlayerDiv = document.getElementById('PlayerDivBtn');
 const PlaylistDiv = document.getElementById('PlaylistDivBtn');
@@ -116,7 +116,7 @@ function hideSongInfo() {
     }
 }
 
-songInput.addEventListener('keydown', async (event) => {
+songInput?.addEventListener('keydown', async (event) => {
     if (event.key === 'Enter') {
         const songName = songInput.value.trim();
         //console.log('Verification de la chanson : %s', songName);
@@ -471,3 +471,60 @@ function updateAutoSwipeButton() {
 
 // Appeler cette fonction quand l'état d'autoswipe change
 window.updateAutoSwipeButton = updateAutoSwipeButton;
+
+// Mobile compatibility functions
+function initMobileCompatibility() {
+    console.log('🎯 Initialisation de la compatibilité mobile...');
+    
+    // Fonction globale pour vérifier les réponses (compatible mobile)
+    window.checkGuess = async function(guess) {
+        if (!guess || !guess.trim()) return false;
+        
+        const currentTrack = await getCurrentTrackData();
+        if (!currentTrack) return false;
+
+        try {
+            const res = await fetch('/api/check-song', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    songName: guess.trim(),
+                    currentTrack
+                })
+            });
+
+            const { match } = await res.json();
+
+            if (match) {
+                // Show song info
+                showSongInfo(currentTrack);
+                
+                // Update discovered status
+                updateDiscoveredStatus(appState.currentIndex, true);
+                
+                // Update mobile interface if available
+                if (window.mobileAPI) {
+                    window.mobileAPI.updateSong({
+                        thumbnail: currentTrack.image,
+                        title: currentTrack.name,
+                        artist: currentTrack.artists?.map(a => a.name).join(', '),
+                        showTitle: true,
+                        showArtist: true
+                    });
+                }
+                
+                return true;
+            } else {
+                return false;
+            }
+        } catch (error) {
+            console.error('❌ Erreur vérification chanson:', error);
+            return false;
+        }
+    };
+    
+    // Fonction globale pour chanson suivante (compatible mobile)
+    window.nextSong = function() {
+        nextTrack();
+    };
+}

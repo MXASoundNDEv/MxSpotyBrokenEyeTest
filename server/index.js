@@ -20,6 +20,36 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../client')));
 
+// Mobile detection middleware
+const isMobile = (req) => {
+  const userAgent = req.get('User-Agent');
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+};
+
+// Routes for mobile detection
+app.get('/', (req, res) => {
+  if (isMobile(req)) {
+    return res.redirect('/mobile');
+  }
+  res.sendFile(path.join(__dirname, '../client/index.html'));
+});
+
+app.get('/mobile', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/mobile.html'));
+});
+
+app.get('/desktop', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/index.html'));
+});
+
+app.get('/test-detection', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/test-detection.html'));
+});
+
+app.get('/test-mobile', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/test-mobile.html'));
+});
+
 // Spotify credentials
 const PORT = process.env.PORT || 3000;
 const client_id = process.env.SPOTIFY_CLIENT_ID;

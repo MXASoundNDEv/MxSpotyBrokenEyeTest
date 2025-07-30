@@ -19,6 +19,30 @@ const CONFIG = {
 const utils = {
     parseUrlHash: () => Object.fromEntries(new URLSearchParams(window.location.hash.slice(1))),
     
+    parseUrlParams: () => Object.fromEntries(new URLSearchParams(window.location.search)),
+    
+    getSpotifyToken: () => {
+        // Chercher le token dans plusieurs endroits
+        const hashParams = utils.parseUrlHash();
+        const urlParams = utils.parseUrlParams();
+        const storedToken = localStorage.getItem('spotify_access_token');
+        const sessionToken = sessionStorage.getItem('spotify_access_token');
+        
+        // Priorité : URL hash > URL params > localStorage > sessionStorage
+        const token = hashParams.access_token || 
+                     urlParams.access_token || 
+                     storedToken || 
+                     sessionToken;
+        
+        // Sauvegarder le token s'il est trouvé et pas déjà stocké
+        if (token && token !== storedToken) {
+            localStorage.setItem('spotify_access_token', token);
+            console.log('🔐 Token Spotify sauvegardé');
+        }
+        
+        return token;
+    },
+    
     getUserOptions: () => {
         try {
             const options = JSON.parse(localStorage.getItem('userOptions') || '{}');
@@ -53,12 +77,22 @@ const utils = {
             return false;
         }
         return true;
+    },
+    
+    updateToken: (newToken) => {
+        if (newToken && newToken !== appState.token) {
+            appState.token = newToken;
+            localStorage.setItem('spotify_access_token', newToken);
+            console.log('🔄 Token Spotify mis à jour');
+            return true;
+        }
+        return false;
     }
 };
 
 // Application state
 const appState = {
-    token: utils.parseUrlHash().access_token,
+    token: utils.getSpotifyToken(),
     player: null,
     deviceId: null,
     playlist: [],
@@ -647,6 +681,15 @@ const PROGRESS_BAR_STYLES = {
 };
 
 function createProgressBar() {
+    // Ne pas créer la barre de progression sur mobile
+    const isMobile = window.location.pathname.includes('/mobile') || 
+                    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+        //console.log('📱 Interface mobile détectée, pas de popup AutoSwipe');
+        return;
+    }
+    
     // Check if progress bar already exists
     let container = document.getElementById('autoswipe-progress-container');
     if (container) {
@@ -898,3 +941,20 @@ async function getUserData() {
         return null;
     }
 }
+
+// Fonctions globales pour l'interface mobile
+window.updateSpotifyToken = (token) => {
+    return utils.updateToken(token);
+};
+
+window.initializeSpotify = () => {
+    const token = utils.getSpotifyToken();
+    if (token) {
+        appState.token = token;
+        initPlayer();
+        return true;
+    }
+    return false;
+};
+
+window.getAppState = () => appState;
