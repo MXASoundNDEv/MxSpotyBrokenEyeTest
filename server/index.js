@@ -1,6 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import fetch from 'node-fetch';
+const fetch = global.fetch;
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import querystring from 'querystring';
@@ -161,7 +161,13 @@ app.get('/api/me/player', async (req, res) => {
       return res.status(response.status).send(text);
     }
 
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch (jsonError) {
+      console.error('Erreur JSON:', jsonError);
+      return res.status(500).json({ error: 'Erreur serveur', details: jsonError.message });
+    }
 
     if (!data || !data.item) {
       return res.status(204).send(); // Aucun morceau en cours
@@ -190,6 +196,56 @@ app.get('/api/tracks/:id', async (req, res) => {
   });
   const data = await response.json();
   res.json(data);
+});
+
+// GET Player devices
+app.get('/api/me/player/devices', async (req, res) => {
+  const accessToken = req.query.token;
+  if (!accessToken) return res.status(400).json({ error: 'Token requis' });
+  try {
+    const response = await fetch('https://api.spotify.com/v1/me/player/devices', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('[❌] Erreur /me/player/devices:', response.status, text);
+      return res.status(response.status).json({ error: text });
+    }
+
+    const data = await response.json();
+    console.log('[✅] Récupération des appareils Spotify réussie:', data.devices.length, 'appareils trouvés');
+    console.log(data.devices.map(d => d.name).join(', '));
+    res.json(data.devices);
+  } catch (err) {
+    console.error('[🔥] Erreur /api/me/player/devices:', err);
+    res.status(500).json({ error: 'Erreur serveur', details: err.message });
+  }
+}); 
+
+// GET User profile data
+app.get('/api/me', async (req, res) => {
+  const accessToken = req.query.token;
+  if (!accessToken) return res.status(400).json({ error: 'Token requis' });
+  
+  try {
+    const response = await fetch('https://api.spotify.com/v1/me', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('[❌] Erreur /me:', response.status, text);
+      return res.status(response.status).json({ error: text });
+    }
+
+    const data = await response.json();
+    console.log('[✅] Récupération du profil utilisateur réussie:', data.display_name);
+    res.json(data);
+  } catch (err) {
+    console.error('[🔥] Erreur /api/me:', err);
+    res.status(500).json({ error: 'Erreur serveur', details: err.message });
+  }
 });
 
 // Function to check if song matches with Levenshtein distance
