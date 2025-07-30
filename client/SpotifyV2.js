@@ -9,18 +9,14 @@ let autoSwipeEnabled = true,
     autoSwipeAbortController = null;
 let playlistHistory = [];
 
-// const loginBtn = document.getElementById('login');
 const playlistSelect = document.getElementById('playlistSelect');
-// const nextBtn = document.getElementById('next');
-// const toggleBtn = document.getElementById('toggleAutoSwipe');
-// const currentDisplay = document.getElementById('current');
 const thumbnail = document.getElementById('thumbnail');
 
 addEventListener('DOMContentLoaded', () => {
     if (token) {
         initPlayer();
     } else {
-        SpotifyconnectModal();
+        // SpotifyconnectModal();//Temporarily disabled
         console.warn('❌ Aucune connexion Spotify détectée. Veuillez vous connecter.');
     }
 });

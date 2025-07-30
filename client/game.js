@@ -1,4 +1,7 @@
 const songInput = document.getElementById('songName');
+const OptionsDiv = document.getElementById('OptionsDivBtn');
+const PlayerDiv = document.getElementById('PlayerDivBtn');
+const AcceuilDiv = document.getElementById('AcceuilDivBtn');
 
 function checkSongMatch(songName, currentSong) {
     if (!currentSong || !songName) return false;
@@ -72,3 +75,22 @@ function updateHistoryPanel(playlistHistory = []) {
         panel.appendChild(item);
     });
 }
+
+//Useless Apllication
+function NotImplemented() {
+    showPopup({
+        text: 'Cette fonctionnalité n\'est pas encore implémentée.',
+        type: 'warn',
+        position: 'top-right',
+        duration: 2000,
+        needValidate: false
+    });
+}
+
+OptionsDiv.addEventListener('click', () => {
+    console.log('⚙️ Options clicked');
+    NotImplemented();
+});
+
+PlayerDiv.addEventListener('click', () => {NotImplemented();});
+AcceuilDiv.addEventListener('click', () => {NotImplemented();});

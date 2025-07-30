@@ -1,6 +1,5 @@
 let popup = null;
 
-
 function showPopup({
     text,
     type = 'info',
@@ -165,20 +164,6 @@ function showModal({
     document.body.appendChild(overlay);
 }
 
-
-
-// showPopup({
-//     text: "Chanson devinée avec succès !",
-//     type: "success", // info, error, warn, success
-//     position: "top-right", // top-left, top-right, bottom-left, bottom-right
-//     duration: 4000, // en ms
-//     needValidate: true,
-//     onValidate: () => {
-//         console.log("Validé !");
-//     }
-// });
-
-
 function SpotifyconnectModal() {
     const loginSpotifyBtn = document.createElement('button');
     loginSpotifyBtn.id = 'login';
@@ -271,4 +256,3 @@ function showPlaylistSelector(playlists = [], onConfirm) {
     });
 }
 
-// showPlaylistSelector();
