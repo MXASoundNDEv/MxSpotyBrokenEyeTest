@@ -76,6 +76,23 @@ function updateHistoryPanel(playlistHistory = []) {
     });
 }
 
+function loadUserOptions() {
+    const saved = localStorage.getItem('userOptions');
+    if (!saved) return;
+
+    try {
+        const { SongTime: st, PlayingDeviceId, RandomSong: rs } = JSON.parse(saved);
+
+        if (typeof st === 'number') SongTime = st;
+        if (typeof rs === 'boolean') RandomSong = rs;
+        if (Devices && Array.isArray(Devices) && PlayingDeviceId) {
+            PlayingDevice = Devices.find(d => d.id === PlayingDeviceId) || null;
+        }
+    } catch (e) {
+        console.error("Erreur de chargement des options utilisateur :", e);
+    }
+}
+
 //Useless Apllication
 function NotImplemented() {
     showPopup({
@@ -89,8 +106,11 @@ function NotImplemented() {
 
 OptionsDiv.addEventListener('click', () => {
     console.log('⚙️ Options clicked');
-    NotImplemented();
+    ShowOptionsModal(Devices, options => {
+        console.log('Options selected:', options);
+        localStorage.setItem('userOptions', JSON.stringify(options));
+    });
 });
-
+    
 PlayerDiv.addEventListener('click', () => {NotImplemented();});
 AcceuilDiv.addEventListener('click', () => {NotImplemented();});
