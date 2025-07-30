@@ -24,7 +24,7 @@ app.use(express.static(path.join(__dirname, '../client')));
 const PORT = process.env.PORT || 3000;
 const client_id = process.env.SPOTIFY_CLIENT_ID;
 const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
-const redirect_uri = 'http://127.0.0.1:3000/callback';
+const redirect_uri = process.env.SPOTIFY_REDIRECT_URI;
 
 // Utils
 const generateRandomString = length =>
