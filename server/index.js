@@ -161,7 +161,13 @@ app.get('/api/me/player', async (req, res) => {
       return res.status(response.status).send(text);
     }
 
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch (jsonError) {
+      console.error('Erreur JSON:', jsonError);
+      return res.status(500).json({ error: 'Erreur serveur', details: jsonError.message });
+    }
 
     if (!data || !data.item) {
       return res.status(204).send(); // Aucun morceau en cours
@@ -208,6 +214,8 @@ app.get('/api/me/player/devices', async (req, res) => {
     }
 
     const data = await response.json();
+    console.log('[✅] Récupération des appareils Spotify réussie:', data.devices.length, 'appareils trouvés');
+    console.log(data.devices.map(d => d.name).join(', '));
     res.json(data.devices);
   } catch (err) {
     console.error('[🔥] Erreur /api/me/player/devices:', err);
