@@ -4,6 +4,7 @@ output/
 build/
 coverage/
 other/
+/other/*
 .DS_Store
 .env
 *.log
@@ -38,3 +39,6 @@ other/
 testapi.cmd
 Old.*
 *.old
+package-lock.json
+/Doc
+/Doc/*
