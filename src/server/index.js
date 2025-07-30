@@ -6,7 +6,7 @@ import cookieParser from 'cookie-parser';
 import querystring from 'querystring';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { checkSongMatch } from './Levenshtein.js'; // Assuming you have a Levenshtein.js for helper functions
+import { checkSongMatch } from './utils/Levenshtein.js'; // Utilitaires pour la correspondance de chansons
 
 dotenv.config();
 const app = express();
@@ -18,6 +18,11 @@ const __dirname = path.dirname(__filename);
 app.use(cors());
 app.use(cookieParser());
 app.use(express.json());
+
+// Servir les fichiers statiques avec la nouvelle structure
+app.use('/scripts', express.static(path.join(__dirname, '../client/scripts')));
+app.use('/styles', express.static(path.join(__dirname, '../client/styles')));
+app.use('/pages', express.static(path.join(__dirname, '../client/pages')));
 app.use(express.static(path.join(__dirname, '../client')));
 
 // Mobile detection middleware
@@ -31,23 +36,23 @@ app.get('/', (req, res) => {
   if (isMobile(req)) {
     return res.redirect('/mobile');
   }
-  res.sendFile(path.join(__dirname, '../client/index.html'));
+  res.sendFile(path.join(__dirname, '../client/pages/index.html'));
 });
 
 app.get('/mobile', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/mobile.html'));
+  res.sendFile(path.join(__dirname, '../client/pages/mobile.html'));
 });
 
 app.get('/desktop', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/index.html'));
+  res.sendFile(path.join(__dirname, '../client/pages/index.html'));
 });
 
 app.get('/test-detection', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/test-detection.html'));
+  res.sendFile(path.join(__dirname, '../client/pages/test-detection.html'));
 });
 
 app.get('/test-mobile', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/test-mobile.html'));
+  res.sendFile(path.join(__dirname, '../client/pages/test-mobile.html'));
 });
 
 // Spotify credentials

@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0a0a1a">
     <title>Spotify Blind Test Mobile</title>
-    <link rel="stylesheet" href="mobile.css">
+    <link rel="stylesheet" href="/styles/mobile.css">
     <script src="https://sdk.scdn.co/spotify-player.js"></script>
     
     <!-- Desktop fallback link -->
@@ -86,6 +86,12 @@
     <!-- Input fixe en bas -->
     <footer class="input-footer">
         <div class="input-container">
+            <!-- Barre de progression linéaire simple -->
+            <div class="autoswipe-linear-progress" id="autoswipeLinearProgress"></div>
+            
+            <!-- Indicateur textuel de progression -->
+            <div class="autoswipe-progress-text" id="autoswipeProgressText" style="display: none;">0%</div>
+            
             <!-- Barre de progression autoswipe autour de l'input -->
             <div class="autoswipe-ring" id="autoswipeRing">
                 <div class="autoswipe-progress" id="autoswipeProgress"></div>
@@ -152,10 +158,10 @@
     </div>
 
     <!-- Scripts - dans l'ordre d'importance -->
-    <script src="Popup.js"></script>
-    <script src="SpotifyV2.js"></script>
-    <script src="game.js"></script>
-    <script src="mobile.js"></script>
+    <script src="/scripts/Popup.js"></script>
+    <script src="/scripts/SpotifyV2.js"></script>
+    <script src="/scripts/game.js"></script>
+    <script src="/scripts/mobile.js"></script>
     
     <!-- Chargement des scripts existants si nécessaire -->
     <script>
@@ -266,6 +272,65 @@
     
     <!-- Script d'initialisation mobile uniquement -->
     <script>
+        // Fonction de test SIMPLE pour la barre de progression
+        window.testProgressBar = function() {
+            console.log('🧪 Test de la barre de progression...');
+            
+            const linearProgress = document.getElementById('autoswipeLinearProgress');
+            const progressText = document.getElementById('autoswipeProgressText');
+            
+            if (!linearProgress) {
+                console.error('❌ Barre de progression non trouvée !');
+                return;
+            }
+            
+            // Afficher l'indicateur textuel
+            if (progressText) {
+                progressText.style.display = 'block';
+            }
+            
+            // Test de progression de 0 à 100%
+            let progress = 0;
+            const testInterval = setInterval(() => {
+                progress += 5;
+                
+                // Mettre à jour la variable CSS
+                linearProgress.style.setProperty('--progress-width', `${progress}%`);
+                
+                // Mettre à jour le texte
+                if (progressText) {
+                    progressText.textContent = `${progress}%`;
+                }
+                
+                console.log(`📊 Progression: ${progress}%`);
+                
+                if (progress >= 100) {
+                    clearInterval(testInterval);
+                    console.log('✅ Test terminé !');
+                    
+                    // Reset après 2 secondes
+                    setTimeout(() => {
+                        linearProgress.style.setProperty('--progress-width', '0%');
+                        if (progressText) {
+                            progressText.style.display = 'none';
+                            progressText.textContent = '0%';
+                        }
+                    }, 2000);
+                }
+            }, 200);
+        };
+        
+        // Test automatique au chargement
+        setTimeout(() => {
+            console.log('🎯 Page chargée - utiliser testProgressBar() pour tester');
+            // Afficher automatiquement une progression à 30% pour voir la barre
+            const linearProgress = document.getElementById('autoswipeLinearProgress');
+            if (linearProgress) {
+                linearProgress.style.setProperty('--progress-width', '30%');
+                console.log('📊 Barre de progression visible à 30%');
+            }
+        }, 1000);
+        
         // Chargement des scripts requis de façon asynchrone pour éviter les doublons
         const loadScript = (src) => {
             return new Promise((resolve, reject) => {
@@ -285,9 +350,9 @@
         
         // Charger les scripts dans l'ordre
         Promise.all([
-            loadScript('SpotifyV2.js'),
-            loadScript('game.js'),
-            loadScript('mobile.js')
+            loadScript('/scripts/SpotifyV2.js'),
+            loadScript('/scripts/game.js'),
+            loadScript('/scripts/mobile.js')
         ]).then(() => {
             console.log('🎯 Tous les scripts mobile chargés');
             
