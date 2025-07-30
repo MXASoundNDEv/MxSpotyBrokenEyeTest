@@ -42,3 +42,4 @@ Old.*
 package-lock.json
 /Doc
 /Doc/*
+client/debug.html
