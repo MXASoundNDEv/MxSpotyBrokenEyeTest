@@ -7,6 +7,7 @@ async function initUI() {
     //console.log('Token detecte, initialisation de l\'interface...');
 
     loadUserOptions();
+    await loadUserProfile(); // Charger le profil utilisateur
     const playlists = await getUserPlaylists();
     //console.log('Playlists:', playlists);
     showPlaylistSelectorModal(playlists, selected => {
@@ -222,6 +223,55 @@ function updateHistoryPanel(playlistHistory = []) {
 
     // Marquer la fin de la mise à jour
     updateHistoryPanel.isUpdating = false;
+}
+
+async function loadUserProfile() {
+    try {
+        console.log('🔄 Chargement du profil utilisateur...');
+        const userData = await getUserData();
+        
+        if (userData) {
+            console.log('👤 Données utilisateur reçues:', {
+                name: userData.display_name,
+                hasImages: userData.images && userData.images.length > 0,
+                country: userData.country
+            });
+            
+            // Mettre à jour l'avatar du joueur
+            const playerAvatar = document.getElementById('playerAvatar');
+            if (playerAvatar) {
+                if (userData.images && userData.images.length > 0) {
+                    playerAvatar.src = userData.images[0].url;
+                    playerAvatar.alt = userData.display_name || 'Profil utilisateur';
+                    console.log('🖼️ Avatar mis à jour');
+                } else {
+                    // Garder l'image par défaut si pas d'image de profil
+                    console.log('ℹ️ Aucune image de profil trouvée, conservation de l\'avatar par défaut');
+                }
+            }
+            
+            // Mettre à jour le nom du joueur
+            const playerName = document.getElementById('playerName');
+            if (playerName && userData.display_name) {
+                playerName.textContent = userData.display_name;
+                console.log('📝 Nom du joueur mis à jour:', userData.display_name);
+            }
+            
+            // Mettre à jour le statut avec le pays si disponible
+            const playerStatus = document.getElementById('playerStatus');
+            if (playerStatus && userData.country) {
+                playerStatus.textContent = `🌍 ${userData.country}`;
+            }
+            
+            console.log('✅ Profil utilisateur chargé avec succès');
+        } else {
+            console.warn('⚠️ Aucune donnée utilisateur reçue');
+        }
+    } catch (error) {
+        console.error('❌ Erreur lors du chargement du profil utilisateur:', error);
+        // Ne pas afficher de popup d'erreur pour ne pas gêner l'utilisateur
+        // L'avatar et le nom par défaut resteront affichés
+    }
 }
 
 function initUserOptions() {

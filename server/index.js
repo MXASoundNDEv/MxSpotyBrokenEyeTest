@@ -223,6 +223,31 @@ app.get('/api/me/player/devices', async (req, res) => {
   }
 }); 
 
+// GET User profile data
+app.get('/api/me', async (req, res) => {
+  const accessToken = req.query.token;
+  if (!accessToken) return res.status(400).json({ error: 'Token requis' });
+  
+  try {
+    const response = await fetch('https://api.spotify.com/v1/me', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('[❌] Erreur /me:', response.status, text);
+      return res.status(response.status).json({ error: text });
+    }
+
+    const data = await response.json();
+    console.log('[✅] Récupération du profil utilisateur réussie:', data.display_name);
+    res.json(data);
+  } catch (err) {
+    console.error('[🔥] Erreur /api/me:', err);
+    res.status(500).json({ error: 'Erreur serveur', details: err.message });
+  }
+});
+
 // Function to check if song matches with Levenshtein distance
 app.post('/api/check-song', (req, res) => {
   const { songName, currentTrack } = req.body;
