@@ -197,9 +197,9 @@ function SpotifyconnectModal() {
     });
 }
 
-function showPlaylistSelector(playlists = [], onConfirm) {
+function showPlaylistSelectorModal(playlists = [], onConfirm) {
     const selected = new Set();
-
+    console.log('📋 Playlists disponibles:', playlists);
     const wrapper = document.createElement('div');
     wrapper.style.display = 'grid';
     wrapper.style.gridTemplateColumns = 'repeat(auto-fill, minmax(120px, 1fr))';
@@ -258,16 +258,12 @@ function showPlaylistSelector(playlists = [], onConfirm) {
 }
 
 function ShowOptionsModal(Devices=[], onConfirm) {
-    let SongTime = 10;// seconds
+    const userOptions = JSON.parse(localStorage.getItem('userOptions'));
+    console.log('🔧 Chargement des options utilisateur:', userOptions);
+    let SongTime = userOptions.SongTime;// seconds
     let PlayingDevice = null;
-    let RandomSong = false;
-    let PlaylistMaxSongs = 10;
-    let Optionlist = {
-        SongTime,
-        PlayingDevice,
-        RandomSong,
-        PlaylistMaxSongs
-    };
+    let RandomSong = userOptions.RandomSong;
+    let PlaylistMaxSongs = userOptions.PlaylistMaxSongs;
 
     const wrapper = document.createElement('div');
     wrapper.style.display = 'flex';
@@ -325,6 +321,9 @@ function ShowOptionsModal(Devices=[], onConfirm) {
         opt.text = dev.name;
         if (PlayingDevice && PlayingDevice.id === dev.id) opt.selected = true;
         deviceSelect.appendChild(opt);
+        console.log('Device option added:', dev.name);
+        console.log('Current Playing Device:', dev.id);
+
     });
 
     deviceContainer.appendChild(deviceLabel);
@@ -355,7 +354,7 @@ function ShowOptionsModal(Devices=[], onConfirm) {
         title: 'Options',
         content: wrapper,
         onConfirm: () => {
-            SongTime = parseInt(songTimeInput.value) || 10;
+            SongTime = parseInt(songTimeInput.value) ;
             const selectedId = deviceSelect.value;
             PlayingDevice = Devices.find(dev => dev.id === selectedId) || null;
             RandomSong = randomToggle.checked;
