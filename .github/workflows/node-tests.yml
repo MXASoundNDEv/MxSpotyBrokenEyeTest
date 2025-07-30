@@ -11,26 +11,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: 🔄 Checkout repo
+    - name: Checkout repo
       uses: actions/checkout@v3
 
-    - name: 📦 Setup Node.js
+    - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
         node-version: '20'
 
-    - name: 📥 Install dependencies
+    - name: Install dependencies
       run: npm install
 
-    - name: 🚀 Start server (in background)
+    - name: Get dynamic Spotify access token
+      id: token
+      run: |
+        echo "ACCESS_TOKEN=$(node scripts/getAccessToken.js)" >> $GITHUB_ENV
+      env:
+        SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+        SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+        SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
+
+    - name: Start server
       run: |
         npm run start &
         sleep 5
       env:
-        SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+        SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}²
         SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
 
-    - name: 🧪 Run tests
+    - name: Run tests with dynamic token
       run: npm test
       env:
-        SPOTIFY_TEST_TOKEN: ${{ secrets.SPOTIFY_TEST_TOKEN }}
+        SPOTIFY_TEST_TOKEN: ${{ env.ACCESS_TOKEN }}
