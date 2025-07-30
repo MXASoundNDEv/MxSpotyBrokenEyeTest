@@ -1,20 +1,81 @@
 const songInput = document.getElementById('songName');
 const OptionsDiv = document.getElementById('OptionsDivBtn');
 const PlayerDiv = document.getElementById('PlayerDivBtn');
-const AcceuilDiv = document.getElementById('AcceuilDivBtn');
+const PlaylistDiv = document.getElementById('PlaylistDivBtn');
 
-function checkSongMatch(songName, currentSong) {
-    if (!currentSong || !songName) return false;
-    return isClose(songName, currentSong.name, 2) ||
-        isClose(songName, currentSong.name.replace(/ - .*$/, ''), 2) ||
-        isClose(songName, currentSong.name.replace(/ \(.+\)$/, ''), 2) ||
-        isClose(songName, currentSong.name.replace(/ \[.+\]$/, ''), 2);
+async function initUI() {
+    //console.log('Token detecte, initialisation de l\'interface...');
+
+    loadUserOptions();
+    const playlists = await getUserPlaylists();
+    //console.log('Playlists:', playlists);
+    showPlaylistSelectorModal(playlists, selected => {
+        if (!selected.length) {
+            showPopup({
+                text: 'Aucune playlist selectionnee',
+                type: 'warn',
+                position: 'top-right'
+            });
+            return;
+        }
+        loadPlaylist(selected[0].id);
+    });
+}
+
+async function updateTrackUI() {
+    const data = await getCurrentTrackData();
+    const imageUrl = data?.image || 'https://placehold.co/300x300?text=No+Image';
+    
+    // Update current track image
+    if (appState.playlist[appState.currentIndex]) {
+        appState.playlist[appState.currentIndex].image = imageUrl;
+    }
+    
+    // Update thumbnail
+    const thumbnail = domElements.thumbnail;
+    if (thumbnail) {
+        thumbnail.src = imageUrl;
+        thumbnail.style.filter = 'blur(1.5rem)';
+    }
+    
+    // Reset song info display
+    hideSongInfo();
+}
+
+function showSongInfo(trackData) {
+    const songTitle = document.getElementById('songTitle');
+    const songArtist = document.getElementById('songArtist');
+    
+    if (songTitle && trackData) {
+        songTitle.textContent = `🎵 ${trackData.name}`;
+        songTitle.classList.add('revealed');
+    }
+    
+    if (songArtist && trackData) {
+        songArtist.textContent = `🎤 ${trackData.artists?.map(a => a.name).join(', ') || 'Artiste inconnu'}`;
+        songArtist.classList.add('revealed');
+    }
+}
+
+function hideSongInfo() {
+    const songTitle = document.getElementById('songTitle');
+    const songArtist = document.getElementById('songArtist');
+    
+    if (songTitle) {
+        songTitle.textContent = '🎵 Chanson mystère';
+        songTitle.classList.remove('revealed');
+    }
+    
+    if (songArtist) {
+        songArtist.textContent = '🎤 Artiste mystère';
+        songArtist.classList.remove('revealed');
+    }
 }
 
 songInput.addEventListener('keydown', async (event) => {
     if (event.key === 'Enter') {
         const songName = songInput.value.trim();
-        console.log('🔍 Vérification de la chanson : %s', songName);
+        //console.log('Verification de la chanson : %s', songName);
         if (!songName) return;
 
         const currentTrack = await getCurrentTrackData();
@@ -23,30 +84,49 @@ songInput.addEventListener('keydown', async (event) => {
         // Appel au serveur pour vérifier la correspondance
         const res = await fetch('/api/check-song', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ songName, currentTrack })
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                songName,
+                currentTrack
+            })
         });
 
         const { match } = await res.json();
 
         if (match) {
-            thumbnail.style.filter = 'none'; // Remove blur effect
+            // Remove blur effect and show song info
+            const thumbnail = domElements.thumbnail;
+            if (thumbnail) {
+                thumbnail.style.filter = 'none';
+            }
+            
+            // Show the song name and artist
+            showSongInfo(currentTrack);
+            
+            // Mark current track as discovered using the sync function
+            updateDiscoveredStatus(appState.currentIndex, true);
+            
+            // AutoSwipe continue même quand la chanson est découverte
+            // (suppression de l'arrêt automatique de l'autoswipe)
+            
             showPopup({
-                text: `✅ Correct ! La chanson est : ${currentTrack.name}`,
+                text: `🎉 Correct ! La chanson est : ${currentTrack.name}`,
                 type: 'success',
                 position: 'top-right',
                 duration: 2500,
                 needValidate: false,
                 btnText: 'Next',
                 onValidate: () => {
-                    console.log("Next Track !");
+                    //console.log("Next Track !");
                     songInput.value = '';
                     nextTrack();
                 }
             });
         } else {
             showPopup({
-                text: `❌ Incorrect ! Essayez encore...`,
+                text: `Incorrect ! Essayez encore...`,
                 type: 'error',
                 position: 'top-right',
                 duration: 4000,
@@ -59,44 +139,154 @@ songInput.addEventListener('keydown', async (event) => {
 });
 
 function updateHistoryPanel(playlistHistory = []) {
-    console.log('📝 Mise à jour du panneau de l\'historique des chansons', playlistHistory);
+    //console.log('Mise a jour du panneau de l\'historique des chansons', playlistHistory);
     const panel = document.querySelector('.left-panel');
     if (!panel) return;
 
-    // Supprime tous les anciens éléments sauf le titre (h3)
+    // Vérification pour éviter les appels multiples simultanés
+    if (updateHistoryPanel.isUpdating) {
+        //console.log('⚠️ Mise à jour de l\'historique déjà en cours, annulation...');
+        return;
+    }
+    updateHistoryPanel.isUpdating = true;
+
+    // Supprime tous les anciens éléments sauf le titre (h3) et les stats
     const oldItems = panel.querySelectorAll('.song-item');
     oldItems.forEach(el => el.remove());
 
-    // Ajoute chaque chanson comme div
-    playlistHistory.forEach(track => {
+    // Mettre à jour les statistiques
+    const discoveredCount = playlistHistory.filter(track => track.discovered).length;
+    const totalCount = playlistHistory.length;
+    
+    const discoveredCountEl = document.getElementById('discoveredCount');
+    const totalCountEl = document.getElementById('totalCount');
+    
+    if (discoveredCountEl) discoveredCountEl.textContent = discoveredCount;
+    if (totalCountEl) totalCountEl.textContent = totalCount;
+
+    // Ajoute les chansons qui ont été jouées dans l'historique
+    playlistHistory.forEach((track, index) => {
+        // Ne créer des éléments que pour les chansons qui ont été jouées (discovered ou passées)
+        // console.log(`Track ${index}:`, track, `discovered: ${track.discovered}, played: ${track.played}`);
+        if (!track.discovered && !track.played) return;
+        
         const item = document.createElement('div');
-        item.className = 'song-item';
-        item.innerText = `🎵 ${track.title}`;
+        item.className = track.discovered ? 'song-item discovered' : 'song-item played-not-discovered';
+        
+        // Ajouter un indicateur visuel différent selon le statut
+        const badge = document.createElement('div');
+        badge.className = 'status-badge';
+        if (track.discovered) {
+            badge.innerHTML = '✅';
+            badge.classList.add('discovered-badge');
+        } else {
+            badge.innerHTML = '❌';
+            badge.classList.add('missed-badge');
+        }
+        item.appendChild(badge);
+        
+        // Créer la structure avec image
+        const imageContainer = document.createElement('div');
+        imageContainer.className = 'song-image-container';
+        
+        const img = document.createElement('img');
+        img.src = track.image || 'https://placehold.co/64x64?text=No+Image';
+        img.alt = 'Album cover';
+        img.className = 'song-image';
+        
+        const textContainer = document.createElement('div');
+        textContainer.className = 'song-text';
+        
+        // Afficher le nom de la chanson différemment selon le statut
+        if (track.discovered) {
+            textContainer.innerHTML = `
+                <div class="song-title-history">🎵 ${track.title}</div>
+                <div class="song-artist-history">🎤 ${track.artist || 'Artiste inconnu'}</div>
+            `;
+        } else {
+            // Chanson jouée mais non découverte - afficher les vraies infos
+            textContainer.innerHTML = `
+                <div class="song-title-history missed">🎵 ${track.title}</div>
+                <div class="song-artist-history missed">🎤 ${track.artist || 'Artiste inconnu'}</div>
+                <div class="song-status">Non trouvée</div>
+            `;
+            // Appliquer un effet pour montrer que c'est manqué
+            img.style.filter = 'grayscale(70%) opacity(0.8)';
+        }
+        
+        imageContainer.appendChild(img);
+        item.appendChild(imageContainer);
+        item.appendChild(textContainer);
         panel.appendChild(item);
     });
+
+    // Marquer la fin de la mise à jour
+    updateHistoryPanel.isUpdating = false;
+}
+
+function initUserOptions() {
+    // Vérifier si les options utilisateur existent déjà
+    const savedOptions = localStorage.getItem('userOptions');
+    if (savedOptions) {
+        loadUserOptions();
+        return
+    }else {
+        // Initialiser les options utilisateur avec des valeurs par défaut
+        const defaultOptions = {
+            SongTime: 10,
+            MaxPlaylistSongs: 100,
+            AutoSwipeEnabled: true,
+            RandomSong: true
+        };
+        localStorage.setItem('userOptions', JSON.stringify(defaultOptions));
+        console.log('🔧 Options utilisateur initialisées avec des valeurs par défaut:', defaultOptions);
+    }
 }
 
 function loadUserOptions() {
     const saved = localStorage.getItem('userOptions');
+    //console.log('Chargement des options utilisateur :', saved);
     if (!saved) return;
 
     try {
-        const { SongTime: st, PlayingDeviceId, RandomSong: rs } = JSON.parse(saved);
-
-        if (typeof st === 'number') SongTime = st;
-        if (typeof rs === 'boolean') RandomSong = rs;
-        if (Devices && Array.isArray(Devices) && PlayingDeviceId) {
-            PlayingDevice = Devices.find(d => d.id === PlayingDeviceId) || null;
+        const options = JSON.parse(saved);
+        //console.log('Options parsées:', options);
+        
+        // Update appState with the correct property names
+        if (typeof options.SongTime === 'number') {
+            appState.autoSwipe.delay = options.SongTime * 1000;
+            console.log('⏱️ Temps de chanson mis à jour:', options.SongTime + 's');
         }
+        if (typeof options.MaxPlaylistSongs === 'number') {
+            appState.maxSongs = options.MaxPlaylistSongs;
+            console.log('📊 Nombre max de chansons mis à jour:', options.MaxPlaylistSongs);
+        } else if (typeof options.PlaylistMaxSongs === 'number') {
+            appState.maxSongs = options.PlaylistMaxSongs;
+            console.log('📊 Nombre max de chansons mis à jour:', options.PlaylistMaxSongs);
+        }
+        if (typeof options.AutoSwipeEnabled === 'boolean') {
+            appState.autoSwipe.enabled = options.AutoSwipeEnabled;
+            console.log('🔄 AutoSwipe activé:', options.AutoSwipeEnabled);
+        }
+        if (typeof options.RandomSong === 'boolean') {
+            console.log('🎲 Mélange aléatoire:', options.RandomSong ? 'activé' : 'désactivé');
+        }
+        
+        // Log de résumé des options chargées
+        console.log('📋 Options chargées:', {
+            songTime: options.SongTime,
+            maxSongs: options.MaxPlaylistSongs || options.PlaylistMaxSongs,
+            autoSwipe: options.AutoSwipeEnabled,
+            randomSong: options.RandomSong
+        });
     } catch (e) {
         console.error("Erreur de chargement des options utilisateur :", e);
     }
 }
 
-//Useless Apllication
 function NotImplemented() {
     showPopup({
-        text: 'Cette fonctionnalité n\'est pas encore implémentée.',
+        text: 'Cette fonctionnalite n\'est pas encore implementee.',
         type: 'warn',
         position: 'top-right',
         duration: 2000,
@@ -104,13 +294,87 @@ function NotImplemented() {
     });
 }
 
-OptionsDiv.addEventListener('click', () => {
-    console.log('⚙️ Options clicked');
-    ShowOptionsModal(Devices, options => {
-        console.log('Options selected:', options);
-        localStorage.setItem('userOptions', JSON.stringify(options));
+async function getDevices() {
+    try {
+        const response = await fetch(`/api/me/player/devices?token=${appState.token}`);
+        if (!response.ok) {
+            //console.error('Erreur lors de la recuperation des appareils:', response.statusText);
+            return [];
+        }
+        const data = await response.json();
+        return data;
+    } catch (err) {
+        //console.error('Erreur serveur /api/me/player/devices:', err);
+        return [];
+    }
+}
+
+OptionsDiv.addEventListener('click', async () => {
+    //console.log('Options clicked');
+    const devices = await getDevices();
+    //console.log('Devices:', devices);
+    ShowOptionsModal(devices, options => {
+        //console.log('Options selected:', options);
+        localStorage.setItem('userOptions', JSON.stringify(options.Optionlist));
+
+        // Reload user options to apply them immediately
+        loadUserOptions();
+
+        // Use the correct path for device selection
+        if (options.Optionlist && options.Optionlist.PlayingDevice) {
+            setPlayingDevice(options.Optionlist.PlayingDevice.id);
+        }
     });
 });
+
+PlayerDiv.addEventListener('click', () => {
+    NotImplemented();
+});
+
+PlaylistDiv.addEventListener('click', async () => {
+    //console.log('Playlist clicked');
+    const playlists = await getUserPlaylists();
+    //console.log('Playlists:', playlists);
+    showPlaylistSelectorModal(playlists, selected => {
+        if (!selected.length) {
+            showPopup({
+                text: 'Aucune playlist selectionnee',
+                type: 'warn',
+                position: 'top-right'
+            });
+            return;
+        }
+        loadPlaylist(selected[0].id);
+    });
+});
+
+// Ajouter un event listener pour le bouton autoswipe
+document.getElementById('autoswipe').addEventListener('click', () => {
+    toggleAutoSwipe();
+    updateAutoSwipeButton();
+});
+
+// Fonction pour mettre à jour l'apparence du bouton autoswipe
+function updateAutoSwipeButton() {
+    const autoswipeBtn = document.getElementById('autoswipe');
+    const autoswipeStatus = document.getElementById('autoswipeStatus');
     
-PlayerDiv.addEventListener('click', () => {NotImplemented();});
-AcceuilDiv.addEventListener('click', () => {NotImplemented();});
+    if (!autoswipeBtn || !autoswipeStatus) return;
+    
+    autoswipeBtn.classList.remove('running');
+    
+    switch (appState.autoSwipe.status) {
+        case 'running':
+            autoswipeBtn.classList.add('running');
+            autoswipeStatus.textContent = '⏸️';
+            break;
+        case 'paused':
+            autoswipeStatus.textContent = '▶️';
+            break;
+        default:
+            autoswipeStatus.textContent = '⏸️';
+    }
+}
+
+// Appeler cette fonction quand l'état d'autoswipe change
+window.updateAutoSwipeButton = updateAutoSwipeButton;
