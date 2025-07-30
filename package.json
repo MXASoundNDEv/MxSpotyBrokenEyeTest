@@ -1,7 +1,7 @@
 {
-  "name": "blindtest",
+  "name": "mxspotybrokeneyetest",
   "version": "1.0.0",
-  "main": "test.js",
+  "main": "server/index.js",
   "scripts": {
     "test": "node tests/routes.test.js",
     "serve": "node server/index.js"
