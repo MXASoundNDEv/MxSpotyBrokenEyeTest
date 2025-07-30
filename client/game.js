@@ -6,21 +6,64 @@ const PlaylistDiv = document.getElementById('PlaylistDivBtn');
 async function initUI() {
     //console.log('Token detecte, initialisation de l\'interface...');
 
-    loadUserOptions();
-    await loadUserProfile(); // Charger le profil utilisateur
-    const playlists = await getUserPlaylists();
-    //console.log('Playlists:', playlists);
-    showPlaylistSelectorModal(playlists, selected => {
-        if (!selected.length) {
-            showPopup({
-                text: 'Aucune playlist selectionnee',
-                type: 'warn',
-                position: 'top-right'
-            });
-            return;
-        }
-        loadPlaylist(selected[0].id);
-    });
+    // Afficher la modal de chargement avec les étapes
+    const loadingSteps = [
+        'Chargement des options utilisateur...',
+        'Connexion au profil Spotify...',
+        'Récupération des playlists...',
+        'Initialisation de l\'interface...'
+    ];
+    
+    const loader = showLoadingModal('Initialisation de Spotify Blind Test...', loadingSteps);
+
+    try {
+        // Étape 1: Charger les options
+        loader.completeStep(0);
+        loadUserOptions();
+        
+        // Étape 2: Charger le profil utilisateur
+        loader.updateMessage('Chargement du profil utilisateur...');
+        await loadUserProfile();
+        loader.completeStep(1);
+        
+        // Étape 3: Récupérer les playlists
+        loader.updateMessage('Récupération de vos playlists...');
+        const playlists = await getUserPlaylists();
+        loader.completeStep(2);
+        
+        // Étape 4: Finaliser l'initialisation
+        loader.updateMessage('Finalisation...');
+        loader.completeStep(3);
+        
+        // Petite pause pour que l'utilisateur voie que tout est terminé
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Cacher la modal de chargement
+        hideLoadingModal();
+        
+        // Afficher le sélecteur de playlist
+        //console.log('Playlists:', playlists);
+        showPlaylistSelectorModal(playlists, selected => {
+            if (!selected.length) {
+                showPopup({
+                    text: 'Aucune playlist selectionnee',
+                    type: 'warn',
+                    position: 'top-right'
+                });
+                return;
+            }
+            loadPlaylist(selected[0].id);
+        });
+    } catch (error) {
+        console.error('❌ Erreur pendant l\'initialisation:', error);
+        hideLoadingModal();
+        showPopup({
+            text: 'Erreur lors de l\'initialisation. Veuillez recharger la page.',
+            type: 'error',
+            position: 'center',
+            duration: 5000
+        });
+    }
 }
 
 async function updateTrackUI() {
