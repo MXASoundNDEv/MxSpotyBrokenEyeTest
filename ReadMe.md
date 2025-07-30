@@ -114,5 +114,5 @@ Si tu as des suggestions ou des améliorations à proposer,
 n’hésite pas à faire un fork et à ouvrir une pull request.
 
 ## 📄 Licence
-Ce projet est publié sous la licence ISC.
+Ce projet est publié sous la licence GPL-3.0.
 Consulte le fichier package.json pour plus de détails.
