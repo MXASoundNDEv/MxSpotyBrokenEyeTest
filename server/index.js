@@ -10,7 +10,6 @@ import { checkSongMatch } from './Levenshtein.js'; // Assuming you have a Levens
 
 dotenv.config();
 const app = express();
-const PORT = 3000;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,6 +21,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../client')));
 
 // Spotify credentials
+const PORT = process.env.PORT || 3000;
 const client_id = process.env.SPOTIFY_CLIENT_ID;
 const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
 const redirect_uri = 'http://127.0.0.1:3000/callback';
