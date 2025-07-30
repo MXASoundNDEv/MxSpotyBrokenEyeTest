@@ -192,6 +192,29 @@ app.get('/api/tracks/:id', async (req, res) => {
   res.json(data);
 });
 
+// GET Player devices
+app.get('/api/me/player/devices', async (req, res) => {
+  const accessToken = req.query.token;
+  if (!accessToken) return res.status(400).json({ error: 'Token requis' });
+  try {
+    const response = await fetch('https://api.spotify.com/v1/me/player/devices', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('[❌] Erreur /me/player/devices:', response.status, text);
+      return res.status(response.status).json({ error: text });
+    }
+
+    const data = await response.json();
+    res.json(data.devices);
+  } catch (err) {
+    console.error('[🔥] Erreur /api/me/player/devices:', err);
+    res.status(500).json({ error: 'Erreur serveur', details: err.message });
+  }
+}); 
+
 // Function to check if song matches with Levenshtein distance
 app.post('/api/check-song', (req, res) => {
   const { songName, currentTrack } = req.body;
