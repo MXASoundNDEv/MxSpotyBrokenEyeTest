@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0a0a1a">
+    <title>Spotify Blind Test - Cyberpunk Edition</title>
+    <link rel="stylesheet" href="/styles/style-responsive.css">
+    <script src="https://sdk.scdn.co/spotify-player.js"></script>
+</head>
+
+<body>
+    <!-- Aurora Background Effects -->
+    <div class="aurora-bg">
+        <div class="aurora-wave"></div>
+        <div class="aurora-wave"></div>
+        <div class="aurora-wave"></div>
+    </div>
+
+    <div class="container">
+        <!-- Enhanced Topbar with AutoSwipe Progress -->
+        <div class="topbar">
+            <div class="topbar-content">
+                <div class="input-container">
+                    <div class="input-glow"></div>
+                    <input id="songName" type="text" placeholder="🎯 Tape ta réponse ici..." maxlength="100"
+                        autocomplete="off" spellcheck="false" />
+                    <div class="input-effects">
+                        <div class="typing-indicator"></div>
+                    </div>
+                </div>
+
+
+            </div>
+        </div>
+
+        <!-- Enhanced Left Panel - History -->
+        <div class="left-panel">
+            <div class="panel-header">
+                <h3><span class="neon-icon">📚</span> Historique</h3>
+                <div class="panel-glow"></div>
+            </div>
+            <div class="history-content">
+                <div class="history-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Découvertes</span>
+                        <span class="stat-value" id="discoveredCount">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Total</span>
+                        <span class="stat-value" id="totalCount">0</span>
+                    </div>
+                </div>
+                <div class="history-grid" id="historyGrid">
+                    <!-- L'historique sera généré dynamiquement -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced Center Panel - Main Game -->
+        <div class="center-panel">
+            <div class="album-container">
+                <div class="album-glow"></div>
+                <img id="thumbnail" src="https://i.scdn.co/image/ab67616d00001e029c11e6241d59940a0157c75a"
+                    alt="Album Cover" />
+                <div class="album-overlay">
+                    <div class="mystery-indicator">
+                        <span class="mystery-icon">🎭</span>
+                        <span class="mystery-text">Mystère</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Song Info Display -->
+            <div class="song-info">
+                <div class="song-title-container">
+                    <div id="songTitle" class="song-title">🎵 Chanson mystère</div>
+                </div>
+                <div class="song-artist-container">
+                    <div id="songArtist" class="song-artist">🎤 Artiste mystère</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced Right Panel - Controls -->
+        <div class="right-panel">
+            <div class="panel-header">
+                <h3><span class="neon-icon">�</span> Contrôles</h3>
+                <div class="panel-glow"></div>
+            </div>
+
+            <!-- Player Info -->
+            <div class="player-info" id="playerInfo">
+                <div class="player-avatar">
+                    <img id="playerAvatar" src="https://i.scdn.co/image/ab6775700000ee850afe9be4724435a51d4644f8"
+                        alt="Player" />
+                    <div class="avatar-glow"></div>
+                </div>
+                <div class="player-details">
+                    <div id="playerName" class="player-name">Joueur</div>
+                    <div id="playerStatus" class="player-status">🟢 En ligne</div>
+                </div>
+            </div>
+
+            <!-- Menu Items -->
+            <div class="menu-items">
+                <div id="PlaylistDivBtn" class="menu-item playlist-btn">
+                    <span class="menu-icon">🎵</span>
+                    <span class="menu-text">Playlist</span>
+                    <div class="menu-glow"></div>
+                </div>
+
+                <div id="PlayerDivBtn" class="menu-item player-btn">
+                    <span class="menu-icon">🎧</span>
+                    <span class="menu-text">Lecteur</span>
+                    <div class="menu-glow"></div>
+                </div>
+
+                <div id="OptionsDivBtn" class="menu-item options-btn">
+                    <span class="menu-icon">⚙️</span>
+                    <span class="menu-text">Options</span>
+                    <div class="menu-glow"></div>
+                </div>
+
+                <div id="autoswipe" class="menu-item autoswipe-btn">
+                    <span class="menu-icon">🤖</span>
+                    <span class="menu-text">AutoSwipe</span>
+                    <span id="autoswipeStatus" class="autoswipe-status">⏸️</span>
+                    <div class="menu-glow"></div>
+                </div>
+                <div id="Github" class="menu-item github-btn" onclick="window.open('https://github.com/MXASoundNDEv/MxSpotyBrokenEyeTest', '_blank')">
+                    <img src="https://github.githubassets.com/assets/GitHub-Mark-ea2971cee799.png" alt="GitHub" class="menu-icon">
+                    <span class="menu-text">Github</span>
+                    <div class="menu-glow"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- AutoSwipe Progress Bar -->
+    <div class="autoswipe-progress-container" id="autoswipeProgressContainer" style="display: none;">
+        <div class="autoswipe-label">
+            <span class="neon-icon">⏱️</span>
+            <span>AutoSwipe</span>
+            <span id="autoswipeTimeRemaining" class="time-remaining">10s</span>
+        </div>
+        <div class="autoswipe-progress-bar">
+            <div class="autoswipe-progress-fill" id="autoswipeProgressFill"></div>
+            <div class="autoswipe-progress-glow"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/scripts/spotify-debug.js"></script>
+    <script src="/scripts/Popup.js"></script>
+    <script src="/scripts/SpotifyV2.js"></script>
+    <script src="/scripts/game.js"></script>
+
+    <!-- Script d'optimisation responsive -->
+    <script>
+        // Optimisations mobile
+        document.addEventListener('DOMContentLoaded', () => {
+            // Détection mobile
+            const isMobile = window.innerWidth <= 768 ||
+                /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+            if (isMobile) {
+                // Classe pour optimisations mobile
+                document.body.classList.add('mobile-optimized');
+
+                // Prévenir le zoom sur focus des inputs
+                const inputs = document.querySelectorAll('input[type="text"]');
+                inputs.forEach(input => {
+                    input.style.fontSize = Math.max(16, parseInt(getComputedStyle(input).fontSize)) +
+                        'px';
+                });
+
+                // Optimisation hauteur viewport pour mobile
+                const setVH = () => {
+                    const vh = window.innerHeight * 0.01;
+                    document.documentElement.style.setProperty('--vh', `${vh}px`);
+                };
+                setVH();
+                window.addEventListener('resize', setVH);
+                window.addEventListener('orientationchange', () => setTimeout(setVH, 100));
+
+                // Haptic feedback pour les interactions
+                if ('vibrate' in navigator) {
+                    const interactiveElements = document.querySelectorAll('.menu-item, button, input');
+                    interactiveElements.forEach(el => {
+                        el.addEventListener('touchstart', () => navigator.vibrate(10));
+                    });
+                }
+
+                // Optimisation pour iOS
+                if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                    document.documentElement.style.setProperty('--safe-area-top', 'env(safe-area-inset-top)');
+                    document.documentElement.style.setProperty('--safe-area-bottom',
+                        'env(safe-area-inset-bottom)');
+                }
+
+                console.log('🎯 Optimisations mobile activées');
+            }
+
+            // Gestion des clics sur les menu items mobiles (menu flottant)
+            if (isMobile) {
+                const menuItems = document.querySelectorAll('.right-panel .menu-item');
+                menuItems.forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        // Animation de feedback
+                        item.style.transform = 'scale(0.9)';
+                        setTimeout(() => {
+                            item.style.transform = '';
+                        }, 150);
+                    });
+                });
+            }
+        });
+
+        // Fonction utilitaire pour tester le responsive
+        window.testResponsive = () => {
+            console.log('📱 Test responsive:');
+            console.log('Largeur:', window.innerWidth);
+            console.log('Hauteur:', window.innerHeight);
+            console.log('Mobile:', window.innerWidth <= 768);
+            console.log('Orientation:', window.innerHeight > window.innerWidth ? 'Portrait' : 'Paysage');
+
+            // Test de redimensionnement
+            const sizes = [{
+                    width: 1920,
+                    height: 1080,
+                    name: 'Desktop Large'
+                },
+                {
+                    width: 1366,
+                    height: 768,
+                    name: 'Desktop'
+                },
+                {
+                    width: 1024,
+                    height: 768,
+                    name: 'Tablet Landscape'
+                },
+                {
+                    width: 768,
+                    height: 1024,
+                    name: 'Tablet Portrait'
+                },
+                {
+                    width: 414,
+                    height: 896,
+                    name: 'iPhone Large'
+                },
+                {
+                    width: 375,
+                    height: 667,
+                    name: 'iPhone'
+                },
+                {
+                    width: 320,
+                    height: 568,
+                    name: 'iPhone Small'
+                }
+            ];
+
+            console.log('Tailles de test disponibles:', sizes.map(s => s.name));
+        };
+
+        // Auto-test au chargement
+        setTimeout(() => {
+            if (window.testResponsive) window.testResponsive();
+        }, 1000);
+    </script>
+
+</body>
+
+</html>

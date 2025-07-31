@@ -1,4 +1,62 @@
-# MxSpoty BrokenEye Test
+# MxSpoty BlindTest
+[![🧪 Tests API Blindtest](https://github.com/MXASoundNDEv/MxSpotyBrokenEyeTest/actions/workflows/node-tests.yml/badge.svg?branch=main)](https://github.com/MXASoundNDEv/MxSpotyBrokenEyeTest/actions/workflows/node-tests.yml)
+## Structure du projet
+
+```
+h:\blindtest\
+├── package.json           # Configuration du proPar défaut, le serveur écoute sur http://localhost:3000 et sert l'interface web depuis la nouvelle structure src/client/.et
+├── package-lock.json      # Verrouillage des dépendances
+├── README.md             # Ce fichier
+├── .env / .env.example   # Variables d'environnement
+├── .gitignore           # Fichiers ignorés par Git
+├── src/                 # Code source principal
+│   ├── client/          # Frontend organisé
+│   │   ├── pages/       # Pages HTML
+│   │   │   ├── index.html
+│   │   │   ├── mobile.html
+│   │   │   ├── debug.html
+│   │   │   ├── test-detection.html
+│   │   │   └── test-mobile.html
+│   │   ├── scripts/     # JavaScript côté client
+│   │   │   ├── game.js
+│   │   │   ├── mobile.js
+│   │   │   ├── SpotifyV2.js
+│   │   │   └── Popup.js
+│   │   └── styles/      # CSS
+│   │       ├── style.css
+│   │       └── mobile.css
+│   └── server/          # Backend API
+│       ├── index.js     # Serveur Express principal
+│       └── utils/       # Utilitaires
+│           └── Levenshtein.js
+├── scripts/             # Scripts de développement
+│   └── getAccessToken.js
+└── docs/               # Documentation
+    ├── MOBILE_README.md
+    ├── GAME_JS_UPDATE.md
+    ├── AUTOSWIPE_IMPROVEMENTS.md
+    └── REFACTORING_IMPROVEMENTS.md
+```
+
+## Installation et démarrage
+
+```bash
+# Installer les dépendances
+npm install
+
+# Démarrer le serveur
+npm run serve
+
+# Lancer les tests
+npm test
+```
+
+## Fonctionnalités
+
+- Interface desktop et mobile
+- Intégration Spotify
+- Détection automatique du type d'appareil
+- API REST pour la gestion des playlists
 
 **Blind test musical basé sur Spotify**
 

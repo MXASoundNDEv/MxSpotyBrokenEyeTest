@@ -6,7 +6,7 @@ import cookieParser from 'cookie-parser';
 import querystring from 'querystring';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { checkSongMatch } from './Levenshtein.js'; // Assuming you have a Levenshtein.js for helper functions
+import { checkSongMatch } from './utils/Levenshtein.js'; // Utilitaires pour la correspondance de chansons
 
 dotenv.config();
 const app = express();
@@ -18,7 +18,20 @@ const __dirname = path.dirname(__filename);
 app.use(cors());
 app.use(cookieParser());
 app.use(express.json());
+
+// Servir les fichiers statiques avec la nouvelle structure
+app.use('/scripts', express.static(path.join(__dirname, '../client/scripts')));
+app.use('/styles', express.static(path.join(__dirname, '../client/styles')));
+app.use('/pages', express.static(path.join(__dirname, '../client/pages')));
 app.use(express.static(path.join(__dirname, '../client')));
+
+
+
+app.get('/', (req, res) => {
+  // Redirection mobile désactivée - interface responsive utilisée
+  res.sendFile(path.join(__dirname, '../client/pages/index.html'));
+});
+
 
 // Spotify credentials
 const PORT = process.env.PORT || 3000;
@@ -32,32 +45,74 @@ const generateRandomString = length =>
 
 // Routes
 app.get('/login', (req, res) => {
-  const state = generateRandomString(16);
-  const scope = [
-    'streaming',
-    'user-read-email',
-    'user-read-private',
-    'user-read-playback-state',
-    'user-modify-playback-state'
-  ].join(' ');
+  try {
+    // Validation des variables d'environnement
+    if (!client_id) {
+      console.error('[❌] SPOTIFY_CLIENT_ID manquant dans .env');
+      return res.status(500).json({ error: 'Configuration Spotify incomplète - CLIENT_ID manquant' });
+    }
+    
+    if (!client_secret) {
+      console.error('[❌] SPOTIFY_CLIENT_SECRET manquant dans .env');
+      return res.status(500).json({ error: 'Configuration Spotify incomplète - CLIENT_SECRET manquant' });
+    }
+    
+    if (!redirect_uri) {
+      console.error('[❌] SPOTIFY_REDIRECT_URI manquant dans .env');
+      return res.status(500).json({ error: 'Configuration Spotify incomplète - REDIRECT_URI manquant' });
+    }
 
-  const query = querystring.stringify({
-    response_type: 'code',
-    client_id,
-    scope,
-    redirect_uri,
-    state,
-  });
+    console.log('[🔐] Tentative de connexion Spotify:');
+    console.log(`    Client ID: ${client_id}`);
+    console.log(`    Redirect URI: ${redirect_uri}`);
+    console.log(`    Port actuel: ${PORT}`);
 
-  res.redirect('https://accounts.spotify.com/authorize?' + query);
+    const state = generateRandomString(16);
+    const scope = [
+      'streaming',
+      'user-read-email',
+      'user-read-private',
+      'user-read-playback-state',
+      'user-modify-playback-state'
+    ].join(' ');
+
+    const query = querystring.stringify({
+      response_type: 'code',
+      client_id,
+      scope,
+      redirect_uri,
+      state,
+    });
+
+    const authUrl = 'https://accounts.spotify.com/authorize?' + query;
+    console.log('[🔗] URL d\'autorisation générée');
+
+    res.redirect(authUrl);
+  } catch (err) {
+    console.error('[🔥] Erreur /login:', err);
+    res.status(500).json({ error: 'Erreur serveur', details: err.message });
+  }
 });
 
 app.get('/callback', async (req, res) => {
   const code = req.query.code;
+  const error = req.query.error;
+  const error_description = req.query.error_description;
 
-  if (!code) return res.status(400).send('Missing code');
+  console.log('[🔄] Callback Spotify reçu:', { code: code ? 'Présent' : 'Absent', error, error_description });
+
+  if (error) {
+    console.error('[❌] Erreur OAuth Spotify:', error, error_description);
+    return res.status(400).send(`Erreur OAuth: ${error} - ${error_description}`);
+  }
+
+  if (!code) {
+    console.error('[❌] Code d\'autorisation manquant');
+    return res.status(400).send('Code d\'autorisation manquant');
+  }
 
   try {
+    console.log('[🔄] Échange du code contre un token...');
     const tokenRes = await fetch('https://accounts.spotify.com/api/token', {
       method: 'POST',
       headers: {
@@ -74,13 +129,17 @@ app.get('/callback', async (req, res) => {
     const data = await tokenRes.json();
 
     if (data.error) {
-      console.error('[❌] Erreur token:', data);
+      console.error('[❌] Erreur token Spotify:', data);
       return res.status(400).json(data);
     }
 
+    console.log('[✅] Token obtenu avec succès!');
+    
+    // Redirection avec les tokens et durée d'expiration
     res.redirect('/#' + querystring.stringify({
       access_token: data.access_token,
-      refresh_token: data.refresh_token
+      refresh_token: data.refresh_token,
+      expires_in: data.expires_in || 3600
     }));
   } catch (err) {
     console.error('[🔥] Erreur callback:', err);
@@ -108,6 +167,49 @@ app.get('/api/playlist/:id', async (req, res) => {
     res.json(results);
   } catch (err) {
     console.error('[🔥] Erreur /api/playlist:', err);
+    
+    // Gestion complète des codes d'erreur Spotify selon la documentation officielle
+    if (err.statusCode) {
+      const statusCode = err.statusCode;
+      let errorMessage = 'Erreur Spotify API';
+      
+      switch (statusCode) {
+        case 400:
+          errorMessage = 'Requête invalide - ID de playlist incorrect ou format invalide';
+          break;
+        case 401:
+          errorMessage = 'Token d\'accès invalide ou expiré - Veuillez vous reconnecter';
+          break;
+        case 403:
+          errorMessage = 'Accès interdit - Cette playlist est privée et appartient à un autre utilisateur';
+          break;
+        case 404:
+          errorMessage = 'Playlist non trouvée - L\'ID de playlist n\'existe pas';
+          break;
+        case 429:
+          errorMessage = 'Trop de requêtes - Limite de débit Spotify atteinte, réessayez plus tard';
+          break;
+        case 500:
+          errorMessage = 'Erreur interne du serveur Spotify';
+          break;
+        case 502:
+          errorMessage = 'Passerelle défaillante - Problème temporaire avec Spotify';
+          break;
+        case 503:
+          errorMessage = 'Service Spotify temporairement indisponible';
+          break;
+        default:
+          errorMessage = `Erreur Spotify API non documentée: ${statusCode}`;
+      }
+      
+      return res.status(statusCode).json({ 
+        error: errorMessage,
+        spotifyError: err.spotifyError,
+        statusCode: statusCode,
+        isSpotifyError: true
+      });
+    }
+    
     res.status(500).json({ error: 'Erreur serveur', details: err.message });
   }
 });
@@ -316,7 +418,12 @@ async function getPlaylistTracks(playlistId, token) {
     if (!res.ok) {
       const errText = await res.text();
       console.error('[❌] Erreur Spotify API:', res.status, errText);
-      throw new Error(`Spotify API error: ${res.status}`);
+      
+      // Créer une erreur avec le code de statut pour une meilleure gestion
+      const error = new Error(`Spotify API error: ${res.status}`);
+      error.statusCode = res.status;
+      error.spotifyError = errText;
+      throw error;
     }
 
     const data = await res.json();
@@ -328,6 +435,10 @@ async function getPlaylistTracks(playlistId, token) {
 }
 
 // 🟢 Start
-app.listen(PORT, () => {
-  console.log(`[🚀] Serveur en ligne : http://localhost:${PORT}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`[🚀] Serveur en ligne : http://localhost:${PORT}`);
+  });
+}
+
+export default app;

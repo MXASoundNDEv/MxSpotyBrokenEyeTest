@@ -19,6 +19,49 @@ const CONFIG = {
 const utils = {
     parseUrlHash: () => Object.fromEntries(new URLSearchParams(window.location.hash.slice(1))),
     
+    parseUrlParams: () => Object.fromEntries(new URLSearchParams(window.location.search)),
+    
+    getSpotifyToken: () => {
+        // Chercher le token dans plusieurs endroits
+        const hashParams = utils.parseUrlHash();
+        const urlParams = utils.parseUrlParams();
+        const storedToken = localStorage.getItem('spotify_access_token');
+        const sessionToken = sessionStorage.getItem('spotify_access_token');
+        const tokenExpiry = localStorage.getItem('spotify_token_expiry');
+        
+        // Vérifier si le token stocké est expiré
+        if (storedToken && tokenExpiry) {
+            const now = Date.now();
+            if (now > parseInt(tokenExpiry)) {
+                console.warn('🔐 Token Spotify expiré, nettoyage...');
+                localStorage.removeItem('spotify_access_token');
+                localStorage.removeItem('spotify_token_expiry');
+                sessionStorage.removeItem('spotify_access_token');
+                return null;
+            }
+        }
+        
+        // Priorité : URL hash > URL params > localStorage > sessionStorage
+        const token = hashParams.access_token || 
+                     urlParams.access_token || 
+                     storedToken || 
+                     sessionToken;
+        
+        // Sauvegarder le token s'il est trouvé et pas déjà stocké
+        if (token && token !== storedToken) {
+            localStorage.setItem('spotify_access_token', token);
+            
+            // Calculer l'expiration (3600 secondes par défaut pour Spotify)
+            const expiresIn = hashParams.expires_in || urlParams.expires_in || 3600;
+            const expiryTime = Date.now() + (parseInt(expiresIn) * 1000);
+            localStorage.setItem('spotify_token_expiry', expiryTime.toString());
+            
+            console.log('🔐 Token Spotify sauvegardé avec expiration:', new Date(expiryTime));
+        }
+        
+        return token;
+    },
+    
     getUserOptions: () => {
         try {
             const options = JSON.parse(localStorage.getItem('userOptions') || '{}');
@@ -53,12 +96,52 @@ const utils = {
             return false;
         }
         return true;
+    },
+    
+    updateToken: (newToken) => {
+        if (newToken && newToken !== appState.token) {
+            appState.token = newToken;
+            localStorage.setItem('spotify_access_token', newToken);
+            console.log('🔄 Token Spotify mis à jour');
+            return true;
+        }
+        return false;
+    },
+    
+    // Nouvelle fonction pour tester la validité du token
+    validateToken: async (token) => {
+        if (!token) return false;
+        
+        try {
+            const response = await fetch('https://api.spotify.com/v1/me', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (response.ok) {
+                console.log('✅ Token Spotify valide');
+                return true;
+            } else if (response.status === 401) {
+                console.warn('🔐 Token Spotify invalide/expiré');
+                // Nettoyer le token invalide
+                localStorage.removeItem('spotify_access_token');
+                localStorage.removeItem('spotify_token_expiry');
+                sessionStorage.removeItem('spotify_access_token');
+                return false;
+            }
+        } catch (error) {
+            console.error('❌ Erreur lors de la validation du token:', error);
+            return false;
+        }
+        
+        return false;
     }
 };
 
 // Application state
 const appState = {
-    token: utils.parseUrlHash().access_token,
+    token: utils.getSpotifyToken(),
     player: null,
     deviceId: null,
     playlist: [],
@@ -99,11 +182,25 @@ addEventListener('DOMContentLoaded', () => {
     }
     window.spotifyAppInitialized = true;
     
+    // Vérification de la validité du token avant l'initialisation
     if (appState.token) {
+        // Vérifier que le token n'est pas expiré
+        const tokenExpiry = localStorage.getItem('spotify_token_expiry');
+        if (tokenExpiry && Date.now() > parseInt(tokenExpiry)) {
+            console.warn('🔐 Token Spotify expiré au chargement');
+            localStorage.removeItem('spotify_access_token');
+            localStorage.removeItem('spotify_token_expiry');
+            appState.token = null;
+        }
+    }
+    
+    if (appState.token) {
+        console.log('🎵 Initialisation avec token valide');
         initPlayer();
     } else {
+        console.warn('❌ Aucune connexion Spotify valide détectée');
         SpotifyconnectModal();
-        console.warn('❌ Aucune connexion Spotify détectée. Veuillez vous connecter.');
+
     }
 });
 
@@ -161,12 +258,38 @@ async function initPlayer() {
                 });
             });
 
-            // Error listeners
+            // Error listeners avec gestion améliorée
             const errorTypes = ['initialization_error', 'authentication_error', 'account_error', 'playback_error'];
             errorTypes.forEach(type => 
                 appState.player.addListener(type, error => {
                     console.error(`${type}:`, error);
                     hideLoadingModal();
+                    
+                    // Gestion spéciale pour les erreurs d'authentification
+                    if (type === 'authentication_error') {
+                        console.warn('🔐 Erreur d\'authentification détectée');
+                        
+                        // Nettoyer les tokens expirés
+                        localStorage.removeItem('spotify_access_token');
+                        localStorage.removeItem('spotify_token_expiry');
+                        sessionStorage.removeItem('spotify_access_token');
+                        
+                        showPopup({
+                            text: "Session Spotify expirée. Reconnexion nécessaire...",
+                            type: "warning",
+                            position: "center",
+                            duration: 5000
+                        });
+                        
+                        // Redirection après 3 secondes
+                        setTimeout(() => {
+                            console.log('🔄 Redirection vers /login...');
+                            window.location.href = '/login';
+                        }, 3000);
+                        
+                        return;
+                    }
+                    
                     showPopup({
                         text: `Erreur Spotify: ${type.replace('_', ' ')}`,
                         type: "error",
@@ -187,6 +310,15 @@ async function initPlayer() {
 // Playlist management
 async function loadPlaylist(id) {
     clearPlaylist();
+    
+    // Protection du layout desktop pendant le chargement
+    if (window.ensureDesktopLayout && typeof window.ensureDesktopLayout === 'function') {
+        window.ensureDesktopLayout();
+    } else if (window.innerWidth > 768 && !document.body.classList.contains('mobile-optimized')) {
+        document.body.classList.add('force-desktop-mode');
+        document.body.classList.remove('mobile-optimized');
+        console.log('🖥️ Layout desktop protégé pendant le chargement');
+    }
     
     if (!id || !appState.token) {
         console.warn('⛔ ID de playlist ou token manquant');
@@ -497,6 +629,12 @@ async function autoSwipeLoop() {
     const { signal } = appState.autoSwipe.abortController;
     appState.autoSwipe.status = 'running';
     
+    // Initialiser l'interface AutoSwipe
+    const existingContainer = document.getElementById('autoswipeProgressContainer');
+    if (existingContainer) {
+        existingContainer.style.display = 'block';
+    }
+    
     //console.log('🚀 Démarrage de l\'AutoSwipe');
     
     try {
@@ -587,6 +725,29 @@ async function delayWithProgress(ms, signal) {
 
 // Progress bar management
 function updateAutoSwipeProgress() {
+    // Priorité 1: Utiliser l'élément HTML existant
+    const existingContainer = document.getElementById('autoswipeProgressContainer');
+    const existingProgressFill = document.getElementById('autoswipeProgressFill');
+    const existingTimeRemaining = document.getElementById('autoswipeTimeRemaining');
+    // Détecter le mode mobile (plus de redirection vers /mobile)
+    const isMobile = window.innerWidth <= 768 || 
+                    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (existingContainer && existingProgressFill && existingTimeRemaining) {
+        // Utiliser l'interface HTML existante
+        const { delay: totalDelay, timeRemaining } = appState.autoSwipe;
+        const percentage = Math.max(0, (totalDelay - timeRemaining) / totalDelay * 100);
+        const timeLeft = Math.ceil(timeRemaining / 1000);
+        
+
+        // Mettre à jour la progression
+        existingProgressFill.style.width = `${percentage}%`;
+        existingTimeRemaining.textContent = `${timeLeft}s`;
+        
+        return; // Sortir ici, ne pas créer de popup
+    }
+    
+    // Priorité 2: Interface desktop (si pas d'éléments HTML existants)
     if (!appState.autoSwipe.progressElement) {
         createProgressBar();
     }
@@ -647,6 +808,22 @@ const PROGRESS_BAR_STYLES = {
 };
 
 function createProgressBar() {
+    // Vérifier d'abord si l'interface HTML existe déjà
+    const existingContainer = document.getElementById('autoswipeProgressContainer');
+    if (existingContainer) {
+        //console.log('📱 Interface AutoSwipe HTML existante détectée');
+        return;
+    }
+    
+    // Détecter le mode mobile (plus de redirection vers /mobile)
+    const isMobile = window.innerWidth <= 768 || 
+                    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+        //console.log('📱 Interface mobile détectée, pas de popup AutoSwipe');
+        return;
+    }
+    
     // Check if progress bar already exists
     let container = document.getElementById('autoswipe-progress-container');
     if (container) {
@@ -718,6 +895,19 @@ function createStopButton() {
 }
 
 function clearAutoSwipeProgress() {
+    // Nettoyer l'interface HTML existante
+    const existingContainer = document.getElementById('autoswipeProgressContainer');
+    if (existingContainer) {
+        existingContainer.style.display = 'none';
+        
+        const existingProgressFill = document.getElementById('autoswipeProgressFill');
+        const existingTimeRemaining = document.getElementById('autoswipeTimeRemaining');
+        
+        if (existingProgressFill) existingProgressFill.style.width = '0%';
+        if (existingTimeRemaining) existingTimeRemaining.textContent = '10s';
+    }
+    
+    // Nettoyer la popup desktop
     const container = document.getElementById('autoswipe-progress-container');
     if (container) {
         container.remove();
@@ -898,3 +1088,20 @@ async function getUserData() {
         return null;
     }
 }
+
+// Fonctions globales pour l'interface mobile
+window.updateSpotifyToken = (token) => {
+    return utils.updateToken(token);
+};
+
+window.initializeSpotify = () => {
+    const token = utils.getSpotifyToken();
+    if (token) {
+        appState.token = token;
+        initPlayer();
+        return true;
+    }
+    return false;
+};
+
+window.getAppState = () => appState;
