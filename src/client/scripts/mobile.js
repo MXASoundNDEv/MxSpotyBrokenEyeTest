@@ -164,7 +164,7 @@ class MobileInterface {
             'mobileSongTitle', 'mobileSongArtist', 'mobileHistoryGrid',
             'mobileDiscoveredCount', 'mobileTotalCount', 'mobileOptionsBtn',
             'optionsModal', 'closeModal', 'autoswipe', 'autoswipeStatus',
-            'autoswipeRing', 'autoswipeProgress', 'autoswipeTimer',
+            'autoswipeRing', 'autoswipeProgress', 'autoswipeLinearProgress', 'autoswipeTimer',
             'autoswipeTimeRemaining', 'autoswipePulse', 'mobilePlayerAvatar',
             'mobilePlayerName'
         ];
@@ -456,14 +456,28 @@ class MobileInterface {
         const progressPercentage = ((10 - this.autoswipeTimeLeft) / 10);
         const progressAngle = progressPercentage * 360;
         
+        console.log(`🔄 Progression autoswipe: ${Math.round(progressPercentage * 100)}% (${this.autoswipeTimeLeft}s restantes)`);
+        
+        // Barre de progression circulaire (existante)
         if (this.elements.autoswipeProgress) {
-            // Mettre à jour l'angle de progression pour l'animation CSS
             this.elements.autoswipeProgress.style.setProperty('--progress-angle', `${progressAngle}deg`);
             
-            // Créer un masque circulaire qui révèle progressivement la bordure
             const maskAngle = progressAngle;
             this.elements.autoswipeProgress.style.background = 
                 `conic-gradient(from -90deg, var(--neon-cyan) 0deg, var(--neon-purple) ${maskAngle/4}deg, var(--neon-magenta) ${maskAngle/2}deg, var(--neon-cyan) ${maskAngle}deg, transparent ${maskAngle}deg)`;
+        }
+        
+        // Barre de progression linéaire (nouvelle - plus simple)
+        if (this.elements.autoswipeLinearProgress) {
+            const linearBar = this.elements.autoswipeLinearProgress.querySelector('::before') || this.elements.autoswipeLinearProgress;
+            this.elements.autoswipeLinearProgress.style.setProperty('--progress-width', `${progressPercentage * 100}%`);
+            
+            // Forcer la mise à jour avec un style direct
+            const beforeElement = this.elements.autoswipeLinearProgress;
+            beforeElement.style.background = `linear-gradient(90deg, 
+                rgba(0, 255, 255, 0.1) 0%, 
+                rgba(0, 255, 255, 0.8) ${progressPercentage * 100}%, 
+                transparent ${progressPercentage * 100}%)`;
         }
         
         if (this.elements.autoswipeTimeRemaining) {
@@ -722,3 +736,59 @@ window.mobileAPI = {
         }
     }
 };
+
+// Test et debug de la barre de progression
+window.testAutoswipeProgress = function() {
+    console.log('🧪 Test de la barre de progression autoswipe...');
+    
+    const progressElement = document.getElementById('autoswipeProgress');
+    const ringElement = document.getElementById('autoswipeRing');
+    
+    if (!progressElement) {
+        console.error('❌ Élément autoswipeProgress non trouvé !');
+        return;
+    }
+    
+    if (!ringElement) {
+        console.error('❌ Élément autoswipeRing non trouvé !');
+        return;
+    }
+    
+    console.log('✅ Éléments trouvés, test de visibilité...');
+    
+    // Test de visibilité forcée
+    progressElement.style.opacity = '1';
+    progressElement.classList.add('active', 'running');
+    progressElement.style.setProperty('--progress-angle', '180deg');
+    
+    // Test progressif
+    let angle = 0;
+    const testInterval = setInterval(() => {
+        angle += 10;
+        progressElement.style.setProperty('--progress-angle', `${angle}deg`);
+        console.log(`📊 Angle: ${angle}deg`);
+        
+        if (angle >= 360) {
+            clearInterval(testInterval);
+            progressElement.style.setProperty('--progress-angle', '0deg');
+            console.log('✅ Test terminé - la barre devrait être visible !');
+        }
+    }, 100);
+};
+
+// Auto-test au chargement pour debug
+setTimeout(() => {
+    if (document.getElementById('autoswipeProgress')) {
+        console.log('🎯 Barre de progression détectée - utiliser testAutoswipeProgress() pour tester');
+        
+        // Test automatique pour voir si la barre est visible
+        const progressElement = document.getElementById('autoswipeProgress');
+        progressElement.style.opacity = '0.7';
+        progressElement.classList.add('running');
+        
+        console.log('🔍 Styles appliqués:', {
+            opacity: progressElement.style.opacity,
+            classes: progressElement.className
+        });
+    }
+}, 2000);

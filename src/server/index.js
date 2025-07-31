@@ -6,7 +6,7 @@ import cookieParser from 'cookie-parser';
 import querystring from 'querystring';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { checkSongMatch } from './Levenshtein.js'; // Assuming you have a Levenshtein.js for helper functions
+import { checkSongMatch } from './utils/Levenshtein.js'; // Utilitaires pour la correspondance de chansons
 
 dotenv.config();
 const app = express();
@@ -18,6 +18,11 @@ const __dirname = path.dirname(__filename);
 app.use(cors());
 app.use(cookieParser());
 app.use(express.json());
+
+// Servir les fichiers statiques avec la nouvelle structure
+app.use('/scripts', express.static(path.join(__dirname, '../client/scripts')));
+app.use('/styles', express.static(path.join(__dirname, '../client/styles')));
+app.use('/pages', express.static(path.join(__dirname, '../client/pages')));
 app.use(express.static(path.join(__dirname, '../client')));
 
 // Mobile detection middleware
@@ -31,23 +36,23 @@ app.get('/', (req, res) => {
   if (isMobile(req)) {
     return res.redirect('/mobile');
   }
-  res.sendFile(path.join(__dirname, '../client/index.html'));
+  res.sendFile(path.join(__dirname, '../client/pages/index.html'));
 });
 
 app.get('/mobile', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/mobile.html'));
+  res.sendFile(path.join(__dirname, '../client/pages/mobile.html'));
 });
 
 app.get('/desktop', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/index.html'));
+  res.sendFile(path.join(__dirname, '../client/pages/index.html'));
 });
 
 app.get('/test-detection', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/test-detection.html'));
+  res.sendFile(path.join(__dirname, '../client/pages/test-detection.html'));
 });
 
 app.get('/test-mobile', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/test-mobile.html'));
+  res.sendFile(path.join(__dirname, '../client/pages/test-mobile.html'));
 });
 
 // Spotify credentials
@@ -138,6 +143,49 @@ app.get('/api/playlist/:id', async (req, res) => {
     res.json(results);
   } catch (err) {
     console.error('[🔥] Erreur /api/playlist:', err);
+    
+    // Gestion complète des codes d'erreur Spotify selon la documentation officielle
+    if (err.statusCode) {
+      const statusCode = err.statusCode;
+      let errorMessage = 'Erreur Spotify API';
+      
+      switch (statusCode) {
+        case 400:
+          errorMessage = 'Requête invalide - ID de playlist incorrect ou format invalide';
+          break;
+        case 401:
+          errorMessage = 'Token d\'accès invalide ou expiré - Veuillez vous reconnecter';
+          break;
+        case 403:
+          errorMessage = 'Accès interdit - Cette playlist est privée et appartient à un autre utilisateur';
+          break;
+        case 404:
+          errorMessage = 'Playlist non trouvée - L\'ID de playlist n\'existe pas';
+          break;
+        case 429:
+          errorMessage = 'Trop de requêtes - Limite de débit Spotify atteinte, réessayez plus tard';
+          break;
+        case 500:
+          errorMessage = 'Erreur interne du serveur Spotify';
+          break;
+        case 502:
+          errorMessage = 'Passerelle défaillante - Problème temporaire avec Spotify';
+          break;
+        case 503:
+          errorMessage = 'Service Spotify temporairement indisponible';
+          break;
+        default:
+          errorMessage = `Erreur Spotify API non documentée: ${statusCode}`;
+      }
+      
+      return res.status(statusCode).json({ 
+        error: errorMessage,
+        spotifyError: err.spotifyError,
+        statusCode: statusCode,
+        isSpotifyError: true
+      });
+    }
+    
     res.status(500).json({ error: 'Erreur serveur', details: err.message });
   }
 });
@@ -346,7 +394,12 @@ async function getPlaylistTracks(playlistId, token) {
     if (!res.ok) {
       const errText = await res.text();
       console.error('[❌] Erreur Spotify API:', res.status, errText);
-      throw new Error(`Spotify API error: ${res.status}`);
+      
+      // Créer une erreur avec le code de statut pour une meilleure gestion
+      const error = new Error(`Spotify API error: ${res.status}`);
+      error.statusCode = res.status;
+      error.spotifyError = errText;
+      throw error;
     }
 
     const data = await res.json();
@@ -358,6 +411,10 @@ async function getPlaylistTracks(playlistId, token) {
 }
 
 // 🟢 Start
-app.listen(PORT, () => {
-  console.log(`[🚀] Serveur en ligne : http://localhost:${PORT}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`[🚀] Serveur en ligne : http://localhost:${PORT}`);
+  });
+}
+
+export default app;
