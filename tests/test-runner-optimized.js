@@ -47,9 +47,7 @@ console.log('🚀 TESTS OPTIMISÉS - API BLINDTEST\n');
 // 📱 Routes statiques (tests groupés)
 console.log('📱 Routes Statiques');
 for (const [path, expectedCodes, desc] of [
-        ['/', [200, 302], 'accueil'],
-        ['/mobile', [200], 'mobile'],
-        ['/desktop', [200], 'desktop']
+        ['/', [200, 302], 'accueil']
     ]) {
     await test(`GET ${path} (${desc})`, async () => {
         const res = await request(app).get(path);

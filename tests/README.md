@@ -1,5 +1,7 @@
 # 🧪 Tests API Blindtest
 
+# Test Status
+[![🧪 Tests API Blindtest](https://github.com/MXASoundNDEv/MxSpotyBrokenEyeTest/actions/workflows/node-tests.yml/badge.svg?branch=main)](https://github.com/MXASoundNDEv/MxSpotyBrokenEyeTest/actions/workflows/node-tests.yml)
 ## 📋 Aperçu
 
 Suite de tests optimisée pour l'API Blindtest Spotify. Les tests sont fusionnés et dédupliqués pour une exécution efficace.
