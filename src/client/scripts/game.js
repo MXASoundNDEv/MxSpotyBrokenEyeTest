@@ -184,8 +184,8 @@ songInput?.addEventListener('keydown', async (event) => {
 
 function updateHistoryPanel(playlistHistory = []) {
     //console.log('Mise a jour du panneau de l\'historique des chansons', playlistHistory);
-    const panel = document.querySelector('.left-panel');
-    if (!panel) return;
+    const historyGrid = document.getElementById('historyGrid');
+    if (!historyGrid) return;
 
     // Vérification pour éviter les appels multiples simultanés
     if (updateHistoryPanel.isUpdating) {
@@ -194,9 +194,8 @@ function updateHistoryPanel(playlistHistory = []) {
     }
     updateHistoryPanel.isUpdating = true;
 
-    // Supprime tous les anciens éléments sauf le titre (h3) et les stats
-    const oldItems = panel.querySelectorAll('.song-item');
-    oldItems.forEach(el => el.remove());
+    // Vider l'historique
+    historyGrid.innerHTML = '';
 
     // Mettre à jour les statistiques
     const discoveredCount = playlistHistory.filter(track => track.discovered).length;
@@ -211,57 +210,31 @@ function updateHistoryPanel(playlistHistory = []) {
     // Ajoute les chansons qui ont été jouées dans l'historique
     playlistHistory.forEach((track, index) => {
         // Ne créer des éléments que pour les chansons qui ont été jouées (discovered ou passées)
-        // console.log(`Track ${index}:`, track, `discovered: ${track.discovered}, played: ${track.played}`);
         if (!track.discovered && !track.played) return;
         
         const item = document.createElement('div');
-        item.className = track.discovered ? 'song-item discovered' : 'song-item played-not-discovered';
+        item.className = track.discovered ? 'history-item discovered' : 'history-item missed';
         
-        // Ajouter un indicateur visuel différent selon le statut
-        const badge = document.createElement('div');
-        badge.className = 'status-badge';
-        if (track.discovered) {
-            badge.innerHTML = '✅';
-            badge.classList.add('discovered-badge');
-        } else {
-            badge.innerHTML = '❌';
-            badge.classList.add('missed-badge');
-        }
-        item.appendChild(badge);
-        
-        // Créer la structure avec image
-        const imageContainer = document.createElement('div');
-        imageContainer.className = 'song-image-container';
-        
+        // Créer l'image
         const img = document.createElement('img');
         img.src = track.image || 'https://placehold.co/64x64?text=No+Image';
-        img.alt = 'Album cover';
-        img.className = 'song-image';
+        img.alt = `${track.title || 'Titre inconnu'} - ${track.artist || 'Artiste inconnu'}`;
         
-        const textContainer = document.createElement('div');
-        textContainer.className = 'song-text';
-        
-        // Afficher le nom de la chanson différemment selon le statut
+        // Ajouter un badge selon le statut
         if (track.discovered) {
-            textContainer.innerHTML = `
-                <div class="song-title-history">🎵 ${track.title}</div>
-                <div class="song-artist-history">🎤 ${track.artist || 'Artiste inconnu'}</div>
-            `;
+            const badge = document.createElement('div');
+            badge.className = 'discovered-badge';
+            badge.innerHTML = '✅';
+            item.appendChild(badge);
         } else {
-            // Chanson jouée mais non découverte - afficher les vraies infos
-            textContainer.innerHTML = `
-                <div class="song-title-history missed">🎵 ${track.title}</div>
-                <div class="song-artist-history missed">🎤 ${track.artist || 'Artiste inconnu'}</div>
-                <div class="song-status">Non trouvée</div>
-            `;
-            // Appliquer un effet pour montrer que c'est manqué
-            img.style.filter = 'grayscale(70%) opacity(0.8)';
+            const badge = document.createElement('div');
+            badge.className = 'missed-badge';
+            badge.innerHTML = '❌';
+            item.appendChild(badge);
         }
         
-        imageContainer.appendChild(img);
-        item.appendChild(imageContainer);
-        item.appendChild(textContainer);
-        panel.appendChild(item);
+        item.appendChild(img);
+        historyGrid.appendChild(item);
     });
 
     // Marquer la fin de la mise à jour

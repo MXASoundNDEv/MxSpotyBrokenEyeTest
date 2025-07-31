@@ -33,27 +33,90 @@ console.log('      • Messages d\'erreur plus explicites');
 console.log('      • Propagation des codes de statut corrects');
 
 console.log('\n📊 ROUTES TESTÉES:');
-const routes = [
-  { method: 'GET', path: '/', status: '✅ OK' },
-  { method: 'GET', path: '/mobile', status: '✅ OK' },
-  { method: 'GET', path: '/desktop', status: '✅ OK' },
-  { method: 'GET', path: '/test-detection', status: '✅ OK' },
-  { method: 'GET', path: '/test-mobile', status: '✅ OK' },
-  { method: 'GET', path: '/login', status: '✅ OK' },
-  { method: 'GET', path: '/callback', status: '✅ OK' },
-  { method: 'GET', path: '/api/me/playlists', status: '✅ OK (gestion erreur améliorée)' },
-  { method: 'GET', path: '/api/playlist/:id', status: '🎯 CORRIGÉ (500→401/403/404)' },
-  { method: 'GET', path: '/api/me/player', status: '✅ OK' },
-  { method: 'GET', path: '/api/tracks/:id', status: '✅ OK' },
-  { method: 'GET', path: '/api/me/player/devices', status: '✅ OK' },
-  { method: 'GET', path: '/api/me', status: '✅ OK' },
-  { method: 'POST', path: '/api/check-song', status: '✅ OK' },
-  { method: 'PUT', path: '/api/play', status: '✅ OK' },
-  { method: 'PUT', path: '/api/seek', status: '✅ OK' }
+const routes = [{
+        method: 'GET',
+        path: '/',
+        status: '✅ OK'
+    },
+    {
+        method: 'GET',
+        path: '/mobile',
+        status: '✅ OK'
+    },
+    {
+        method: 'GET',
+        path: '/desktop',
+        status: '✅ OK'
+    },
+    {
+        method: 'GET',
+        path: '/test-detection',
+        status: '✅ OK'
+    },
+    {
+        method: 'GET',
+        path: '/test-mobile',
+        status: '✅ OK'
+    },
+    {
+        method: 'GET',
+        path: '/login',
+        status: '✅ OK'
+    },
+    {
+        method: 'GET',
+        path: '/callback',
+        status: '✅ OK'
+    },
+    {
+        method: 'GET',
+        path: '/api/me/playlists',
+        status: '✅ OK (gestion erreur améliorée)'
+    },
+    {
+        method: 'GET',
+        path: '/api/playlist/:id',
+        status: '🎯 CORRIGÉ (500→401/403/404)'
+    },
+    {
+        method: 'GET',
+        path: '/api/me/player',
+        status: '✅ OK'
+    },
+    {
+        method: 'GET',
+        path: '/api/tracks/:id',
+        status: '✅ OK'
+    },
+    {
+        method: 'GET',
+        path: '/api/me/player/devices',
+        status: '✅ OK'
+    },
+    {
+        method: 'GET',
+        path: '/api/me',
+        status: '✅ OK'
+    },
+    {
+        method: 'POST',
+        path: '/api/check-song',
+        status: '✅ OK'
+    },
+    {
+        method: 'PUT',
+        path: '/api/play',
+        status: '✅ OK'
+    },
+    {
+        method: 'PUT',
+        path: '/api/seek',
+        status: '✅ OK'
+    }
 ];
 
 routes.forEach(route => {
-  console.log(`   ${route.method.padEnd(4)} ${route.path.padEnd(25)} ${route.status}`);
+    console.log(`   ${route.method.padEnd(4)} ${route.path.padEnd(25)} ${route.status}`);
 });
 
 console.log('\n🎯 IMPACT DE LA CORRECTION:');
