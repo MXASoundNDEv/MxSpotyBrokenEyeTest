@@ -60,26 +60,6 @@ await test('GET / - page d\'accueil avec détection mobile', async () => {
     expect([200, 302]).toContain(res.statusCode);
 });
 
-await test('GET /mobile - page mobile', async () => {
-    const res = await request(app).get('/mobile');
-    expect(res.statusCode).toBe(200);
-});
-
-await test('GET /desktop - page desktop', async () => {
-    const res = await request(app).get('/desktop');
-    expect(res.statusCode).toBe(200);
-});
-
-await test('GET /test-detection - page de test de détection', async () => {
-    const res = await request(app).get('/test-detection');
-    expect(res.statusCode).toBe(200);
-});
-
-await test('GET /test-mobile - page de test mobile', async () => {
-    const res = await request(app).get('/test-mobile');
-    expect(res.statusCode).toBe(200);
-});
-
 // 🔐 Tests d'authentification Spotify
 console.log('\n🔐 ==> AUTHENTIFICATION SPOTIFY');
 

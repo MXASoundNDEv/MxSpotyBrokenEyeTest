@@ -1,5 +1,5 @@
 # MxSpoty BlindTest
-
+[![🧪 Tests API Blindtest](https://github.com/MXASoundNDEv/MxSpotyBrokenEyeTest/actions/workflows/node-tests.yml/badge.svg?branch=main)](https://github.com/MXASoundNDEv/MxSpotyBrokenEyeTest/actions/workflows/node-tests.yml)
 ## Structure du projet
 
 ```
