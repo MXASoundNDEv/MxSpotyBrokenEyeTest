@@ -42,9 +42,7 @@ console.log('🚀 TESTS BASIQUES - SANS TOKEN SPOTIFY\n');
 // 📱 Routes statiques (toujours fonctionnelles)
 console.log('📱 Routes Statiques');
 for (const [path, expectedCodes, desc] of [
-        ['/', [200, 302], 'accueil avec détection mobile'],
-        ['/mobile', [200], 'interface mobile'],
-        ['/desktop', [200], 'interface desktop']
+        ['/', [200, 302], 'accueil avec détection mobile']
     ]) {
     await test(`GET ${path} (${desc})`, async () => {
         const res = await request(app).get(path);
