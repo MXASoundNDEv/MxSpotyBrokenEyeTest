@@ -1,9 +1,13 @@
 {
   "name": "mxspotybrokeneyetest",
   "version": "1.0.0",
+  "type": "module",
   "main": "src/server/index.js",
   "scripts": {
-    "test": "node tests/routes.test.js",
+    "test": "node tests/test-runner-optimized.js",
+    "test:basic": "node tests/test-runner-basic.js",
+    "test:jest": "jest tests/routes-optimized.test.js",
+    "start": "node src/server/index.js",
     "serve": "node src/server/index.js"
   },
   "author": "",
@@ -17,22 +21,8 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "jest": "^30.0.5",
     "open": "^10.2.0",
     "supertest": "^7.1.4"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "coveragePathIgnorePatterns": [
-      "/node_modules/"
-    ],
-    "testMatch": [
-      "**/tests/**/*.test.js"
-    ],
-    "collectCoverage": true,
-    "coverageDirectory": "coverage",
-    "coverageReporters": [
-      "text",
-      "lcov"
-    ]
   }
 }

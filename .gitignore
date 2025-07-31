@@ -40,6 +40,6 @@ testapi.cmd
 Old.*
 *.old
 package-lock.json
-/Doc
-/Doc/*
+/docs
+/docs/*
 client/debug.html

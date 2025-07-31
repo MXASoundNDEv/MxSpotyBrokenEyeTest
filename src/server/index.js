@@ -143,6 +143,49 @@ app.get('/api/playlist/:id', async (req, res) => {
     res.json(results);
   } catch (err) {
     console.error('[🔥] Erreur /api/playlist:', err);
+    
+    // Gestion complète des codes d'erreur Spotify selon la documentation officielle
+    if (err.statusCode) {
+      const statusCode = err.statusCode;
+      let errorMessage = 'Erreur Spotify API';
+      
+      switch (statusCode) {
+        case 400:
+          errorMessage = 'Requête invalide - ID de playlist incorrect ou format invalide';
+          break;
+        case 401:
+          errorMessage = 'Token d\'accès invalide ou expiré - Veuillez vous reconnecter';
+          break;
+        case 403:
+          errorMessage = 'Accès interdit - Cette playlist est privée et appartient à un autre utilisateur';
+          break;
+        case 404:
+          errorMessage = 'Playlist non trouvée - L\'ID de playlist n\'existe pas';
+          break;
+        case 429:
+          errorMessage = 'Trop de requêtes - Limite de débit Spotify atteinte, réessayez plus tard';
+          break;
+        case 500:
+          errorMessage = 'Erreur interne du serveur Spotify';
+          break;
+        case 502:
+          errorMessage = 'Passerelle défaillante - Problème temporaire avec Spotify';
+          break;
+        case 503:
+          errorMessage = 'Service Spotify temporairement indisponible';
+          break;
+        default:
+          errorMessage = `Erreur Spotify API non documentée: ${statusCode}`;
+      }
+      
+      return res.status(statusCode).json({ 
+        error: errorMessage,
+        spotifyError: err.spotifyError,
+        statusCode: statusCode,
+        isSpotifyError: true
+      });
+    }
+    
     res.status(500).json({ error: 'Erreur serveur', details: err.message });
   }
 });
@@ -351,7 +394,12 @@ async function getPlaylistTracks(playlistId, token) {
     if (!res.ok) {
       const errText = await res.text();
       console.error('[❌] Erreur Spotify API:', res.status, errText);
-      throw new Error(`Spotify API error: ${res.status}`);
+      
+      // Créer une erreur avec le code de statut pour une meilleure gestion
+      const error = new Error(`Spotify API error: ${res.status}`);
+      error.statusCode = res.status;
+      error.spotifyError = errText;
+      throw error;
     }
 
     const data = await res.json();
@@ -363,6 +411,10 @@ async function getPlaylistTracks(playlistId, token) {
 }
 
 // 🟢 Start
-app.listen(PORT, () => {
-  console.log(`[🚀] Serveur en ligne : http://localhost:${PORT}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`[🚀] Serveur en ligne : http://localhost:${PORT}`);
+  });
+}
+
+export default app;
