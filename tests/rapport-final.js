@@ -40,26 +40,6 @@ const routes = [{
     },
     {
         method: 'GET',
-        path: '/mobile',
-        status: '✅ OK'
-    },
-    {
-        method: 'GET',
-        path: '/desktop',
-        status: '✅ OK'
-    },
-    {
-        method: 'GET',
-        path: '/test-detection',
-        status: '✅ OK'
-    },
-    {
-        method: 'GET',
-        path: '/test-mobile',
-        status: '✅ OK'
-    },
-    {
-        method: 'GET',
         path: '/login',
         status: '✅ OK'
     },
