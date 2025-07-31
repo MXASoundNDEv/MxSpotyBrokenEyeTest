@@ -25,17 +25,15 @@ app.use('/styles', express.static(path.join(__dirname, '../client/styles')));
 app.use('/pages', express.static(path.join(__dirname, '../client/pages')));
 app.use(express.static(path.join(__dirname, '../client')));
 
-// Mobile detection middleware
-const isMobile = (req) => {
-  const userAgent = req.get('User-Agent');
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-};
+// Mobile detection middleware (DÉSACTIVÉ - plus de redirection)
+// const isMobile = (req) => {
+//   const userAgent = req.get('User-Agent');
+//   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+// };
 
-// Routes for mobile detection
+// Routes - redirection mobile désactivée, tout le monde va sur index.html responsive
 app.get('/', (req, res) => {
-  if (isMobile(req)) {
-    return res.redirect('/mobile');
-  }
+  // Redirection mobile désactivée - interface responsive utilisée
   res.sendFile(path.join(__dirname, '../client/pages/index.html'));
 });
 
@@ -55,6 +53,31 @@ app.get('/test-mobile', (req, res) => {
   res.sendFile(path.join(__dirname, '../client/pages/test-mobile.html'));
 });
 
+// 🔍 Endpoint de diagnostic Spotify
+app.get('/spotify-debug', (req, res) => {
+  const config = {
+    client_id: client_id ? '✅ Configuré' : '❌ Manquant',
+    client_secret: client_secret ? '✅ Configuré' : '❌ Manquant',
+    redirect_uri: redirect_uri || '❌ Manquant',
+    port: PORT,
+    expected_redirect: `http://localhost:${PORT}/callback`,
+    current_redirect: redirect_uri
+  };
+  
+  const isValid = client_id && client_secret && redirect_uri;
+  const portMatch = redirect_uri && redirect_uri.includes(`:${PORT}/`);
+  
+  res.json({
+    status: isValid ? (portMatch ? 'OK' : 'PORT_MISMATCH') : 'MISSING_CONFIG',
+    config,
+    recommendations: [
+      ...(isValid ? [] : ['Vérifiez votre fichier .env']),
+      ...(!portMatch ? [`Changez SPOTIFY_REDIRECT_URI vers http://localhost:${PORT}/callback`] : []),
+      'Vérifiez que l\'URL de redirection correspond dans le dashboard Spotify'
+    ]
+  });
+});
+
 // Spotify credentials
 const PORT = process.env.PORT || 3000;
 const client_id = process.env.SPOTIFY_CLIENT_ID;
@@ -67,32 +90,74 @@ const generateRandomString = length =>
 
 // Routes
 app.get('/login', (req, res) => {
-  const state = generateRandomString(16);
-  const scope = [
-    'streaming',
-    'user-read-email',
-    'user-read-private',
-    'user-read-playback-state',
-    'user-modify-playback-state'
-  ].join(' ');
+  try {
+    // Validation des variables d'environnement
+    if (!client_id) {
+      console.error('[❌] SPOTIFY_CLIENT_ID manquant dans .env');
+      return res.status(500).json({ error: 'Configuration Spotify incomplète - CLIENT_ID manquant' });
+    }
+    
+    if (!client_secret) {
+      console.error('[❌] SPOTIFY_CLIENT_SECRET manquant dans .env');
+      return res.status(500).json({ error: 'Configuration Spotify incomplète - CLIENT_SECRET manquant' });
+    }
+    
+    if (!redirect_uri) {
+      console.error('[❌] SPOTIFY_REDIRECT_URI manquant dans .env');
+      return res.status(500).json({ error: 'Configuration Spotify incomplète - REDIRECT_URI manquant' });
+    }
 
-  const query = querystring.stringify({
-    response_type: 'code',
-    client_id,
-    scope,
-    redirect_uri,
-    state,
-  });
+    console.log('[🔐] Tentative de connexion Spotify:');
+    console.log(`    Client ID: ${client_id}`);
+    console.log(`    Redirect URI: ${redirect_uri}`);
+    console.log(`    Port actuel: ${PORT}`);
 
-  res.redirect('https://accounts.spotify.com/authorize?' + query);
+    const state = generateRandomString(16);
+    const scope = [
+      'streaming',
+      'user-read-email',
+      'user-read-private',
+      'user-read-playback-state',
+      'user-modify-playback-state'
+    ].join(' ');
+
+    const query = querystring.stringify({
+      response_type: 'code',
+      client_id,
+      scope,
+      redirect_uri,
+      state,
+    });
+
+    const authUrl = 'https://accounts.spotify.com/authorize?' + query;
+    console.log('[🔗] URL d\'autorisation générée');
+
+    res.redirect(authUrl);
+  } catch (err) {
+    console.error('[🔥] Erreur /login:', err);
+    res.status(500).json({ error: 'Erreur serveur', details: err.message });
+  }
 });
 
 app.get('/callback', async (req, res) => {
   const code = req.query.code;
+  const error = req.query.error;
+  const error_description = req.query.error_description;
 
-  if (!code) return res.status(400).send('Missing code');
+  console.log('[🔄] Callback Spotify reçu:', { code: code ? 'Présent' : 'Absent', error, error_description });
+
+  if (error) {
+    console.error('[❌] Erreur OAuth Spotify:', error, error_description);
+    return res.status(400).send(`Erreur OAuth: ${error} - ${error_description}`);
+  }
+
+  if (!code) {
+    console.error('[❌] Code d\'autorisation manquant');
+    return res.status(400).send('Code d\'autorisation manquant');
+  }
 
   try {
+    console.log('[🔄] Échange du code contre un token...');
     const tokenRes = await fetch('https://accounts.spotify.com/api/token', {
       method: 'POST',
       headers: {
@@ -109,13 +174,17 @@ app.get('/callback', async (req, res) => {
     const data = await tokenRes.json();
 
     if (data.error) {
-      console.error('[❌] Erreur token:', data);
+      console.error('[❌] Erreur token Spotify:', data);
       return res.status(400).json(data);
     }
 
+    console.log('[✅] Token obtenu avec succès!');
+    
+    // Redirection avec les tokens et durée d'expiration
     res.redirect('/#' + querystring.stringify({
       access_token: data.access_token,
-      refresh_token: data.refresh_token
+      refresh_token: data.refresh_token,
+      expires_in: data.expires_in || 3600
     }));
   } catch (err) {
     console.error('[🔥] Erreur callback:', err);
