@@ -311,6 +311,15 @@ async function initPlayer() {
 async function loadPlaylist(id) {
     clearPlaylist();
     
+    // Protection du layout desktop pendant le chargement
+    if (window.ensureDesktopLayout && typeof window.ensureDesktopLayout === 'function') {
+        window.ensureDesktopLayout();
+    } else if (window.innerWidth > 768 && !document.body.classList.contains('mobile-optimized')) {
+        document.body.classList.add('force-desktop-mode');
+        document.body.classList.remove('mobile-optimized');
+        console.log('🖥️ Layout desktop protégé pendant le chargement');
+    }
+    
     if (!id || !appState.token) {
         console.warn('⛔ ID de playlist ou token manquant');
         return;
@@ -720,6 +729,9 @@ function updateAutoSwipeProgress() {
     const existingContainer = document.getElementById('autoswipeProgressContainer');
     const existingProgressFill = document.getElementById('autoswipeProgressFill');
     const existingTimeRemaining = document.getElementById('autoswipeTimeRemaining');
+    // Détecter le mode mobile (plus de redirection vers /mobile)
+    const isMobile = window.innerWidth <= 768 || 
+                    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     if (existingContainer && existingProgressFill && existingTimeRemaining) {
         // Utiliser l'interface HTML existante
@@ -727,9 +739,7 @@ function updateAutoSwipeProgress() {
         const percentage = Math.max(0, (totalDelay - timeRemaining) / totalDelay * 100);
         const timeLeft = Math.ceil(timeRemaining / 1000);
         
-        // Afficher le container s'il était caché
-        existingContainer.style.display = 'block';
-        
+
         // Mettre à jour la progression
         existingProgressFill.style.width = `${percentage}%`;
         existingTimeRemaining.textContent = `${timeLeft}s`;

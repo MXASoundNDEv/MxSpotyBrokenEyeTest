@@ -45,3 +45,5 @@ package-lock.json
 client/debug.html
 src/client/pages/test
 src/client/scripts/test
+src/client/styles/test
+

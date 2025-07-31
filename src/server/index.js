@@ -25,58 +25,13 @@ app.use('/styles', express.static(path.join(__dirname, '../client/styles')));
 app.use('/pages', express.static(path.join(__dirname, '../client/pages')));
 app.use(express.static(path.join(__dirname, '../client')));
 
-// Mobile detection middleware (DÉSACTIVÉ - plus de redirection)
-// const isMobile = (req) => {
-//   const userAgent = req.get('User-Agent');
-//   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-// };
 
-// Routes - redirection mobile désactivée, tout le monde va sur index.html responsive
+
 app.get('/', (req, res) => {
   // Redirection mobile désactivée - interface responsive utilisée
   res.sendFile(path.join(__dirname, '../client/pages/index.html'));
 });
 
-app.get('/mobile', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/pages/mobile.html'));
-});
-
-app.get('/desktop', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/pages/index.html'));
-});
-
-app.get('/test-detection', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/pages/test-detection.html'));
-});
-
-app.get('/test-mobile', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/pages/test-mobile.html'));
-});
-
-// 🔍 Endpoint de diagnostic Spotify
-app.get('/spotify-debug', (req, res) => {
-  const config = {
-    client_id: client_id ? '✅ Configuré' : '❌ Manquant',
-    client_secret: client_secret ? '✅ Configuré' : '❌ Manquant',
-    redirect_uri: redirect_uri || '❌ Manquant',
-    port: PORT,
-    expected_redirect: `http://localhost:${PORT}/callback`,
-    current_redirect: redirect_uri
-  };
-  
-  const isValid = client_id && client_secret && redirect_uri;
-  const portMatch = redirect_uri && redirect_uri.includes(`:${PORT}/`);
-  
-  res.json({
-    status: isValid ? (portMatch ? 'OK' : 'PORT_MISMATCH') : 'MISSING_CONFIG',
-    config,
-    recommendations: [
-      ...(isValid ? [] : ['Vérifiez votre fichier .env']),
-      ...(!portMatch ? [`Changez SPOTIFY_REDIRECT_URI vers http://localhost:${PORT}/callback`] : []),
-      'Vérifiez que l\'URL de redirection correspond dans le dashboard Spotify'
-    ]
-  });
-});
 
 // Spotify credentials
 const PORT = process.env.PORT || 3000;
