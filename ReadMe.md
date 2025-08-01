@@ -1,5 +1,5 @@
 # MxSpoty BlindTest
-[![🧪 Tests API Blindtest](https://github.com/MXASoundNDEv/MxSpotyBrokenEyeTest/actions/workflows/node-tests.yml/badge.svg?branch=main)](https://github.com/MXASoundNDEv/MxSpotyBrokenEyeTest/actions/workflPar défaut, le serveur écoute sur **http://localhost:3000** et sert l'interface we## ⚠️ Notes importantes
+[![🧪 Tests API Blindtest](https://github.com/MXASoundNDEv/MxSpotyBrokenEyeTest/actions/workflows/node-tests.yml/badge.svg?branch=main)]
 
 ### Pré-requis Spotify
 - **Compte Spotify Premium** requis pour le SDK Web Playback
