@@ -147,6 +147,49 @@ app.get('/callback', async (req, res) => {
   }
 });
 
+// Route pour rafraîchir le token
+app.post('/api/refresh-token', async (req, res) => {
+  const { refresh_token } = req.body;
+  
+  if (!refresh_token) {
+    return res.status(400).json({ error: 'Refresh token requis' });
+  }
+
+  try {
+    console.log('[🔄] Rafraîchissement du token...');
+    
+    const response = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': 'Basic ' + Buffer.from(client_id + ':' + client_secret).toString('base64')
+      },
+      body: querystring.stringify({
+        grant_type: 'refresh_token',
+        refresh_token: refresh_token
+      })
+    });
+
+    const data = await response.json();
+    
+    if (data.error) {
+      console.error('[❌] Erreur lors du rafraîchissement:', data);
+      return res.status(400).json(data);
+    }
+
+    console.log('[✅] Token rafraîchi avec succès!');
+    res.json({
+      access_token: data.access_token,
+      expires_in: data.expires_in || 3600,
+      refresh_token: data.refresh_token || refresh_token // Garder l'ancien si pas de nouveau
+    });
+    
+  } catch (err) {
+    console.error('[🔥] Erreur rafraîchissement token:', err);
+    res.status(500).json({ error: 'Erreur serveur', details: err.message });
+  }
+});
+
 // 📥 GET playlist tracks
 app.get('/api/playlist/:id', async (req, res) => {
   const accessToken = req.query.token;
@@ -217,30 +260,70 @@ app.get('/api/playlist/:id', async (req, res) => {
 // 📥 GET user playlists
 app.get('/api/me/playlists', async (req, res) => {
   const accessToken = req.query.token;
-  if (!accessToken) return res.status(400).json({ error: 'Token requis' });
+  if (!accessToken) {
+    console.error('[❌] Token manquant pour /api/me/playlists');
+    return res.status(400).json({ error: 'Token requis' });
+  }
 
   try {
+    console.log('[📋] Récupération des playlists pour l\'utilisateur...');
+    
     const response = await fetch('https://api.spotify.com/v1/me/playlists?limit=50', {
       headers: { 'Authorization': 'Bearer ' + accessToken }
     });
 
     if (!response.ok) {
       const text = await response.text();
-      console.error('[❌] Erreur /me/playlists:', response.status, text);
-      return res.status(response.status).json({ error: text });
+      console.error('[❌] Erreur API Spotify /me/playlists:', {
+        status: response.status,
+        statusText: response.statusText,
+        response: text,
+        token: accessToken.substring(0, 20) + '...' // Log partiel du token pour debug
+      });
+      
+      // Si c'est une erreur d'autorisation, renvoyer un message plus clair
+      if (response.status === 401) {
+        return res.status(401).json({ 
+          error: 'Token expiré ou invalide', 
+          needsReauth: true 
+        });
+      }
+      
+      return res.status(response.status).json({ 
+        error: `Erreur Spotify API: ${response.status} ${response.statusText}`,
+        details: text 
+      });
     }
 
     const data = await response.json();
-    const playlists = data.items.map(p => ({
-      id: p.id,
-      name: p.name,
-      image: p.images[0]?.url || null
-    }));
+    console.log('[✅] Playlists récupérées:', data.items?.length || 0);
+    
+    // Vérification que data.items existe et est un tableau
+    if (!data.items || !Array.isArray(data.items)) {
+      console.warn('[⚠️] Aucune playlist trouvée ou format inattendu:', data);
+      return res.json([]);
+    }
+    
+    const playlists = data.items
+      .filter(p => p && p.id && p.name) // Filtrer les playlists invalides
+      .map(p => ({
+        id: p.id,
+        name: p.name,
+        image: (p.images && Array.isArray(p.images) && p.images.length > 0) ? p.images[0].url : null
+      }));
 
+    console.log('[📊] Playlists traitées:', playlists.length);
     res.json(playlists);
   } catch (err) {
-    console.error('[🔥] Erreur /me/playlists:', err);
-    res.status(500).json({ error: 'Erreur serveur', details: err.message });
+    console.error('[🔥] Erreur interne /me/playlists:', {
+      message: err.message,
+      stack: err.stack,
+      token: accessToken ? accessToken.substring(0, 20) + '...' : 'undefined'
+    });
+    res.status(500).json({ 
+      error: 'Erreur serveur interne', 
+      details: err.message 
+    });
   }
 });
 

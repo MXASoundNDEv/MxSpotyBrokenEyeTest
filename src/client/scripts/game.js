@@ -26,10 +26,37 @@ async function initUI() {
         await loadUserProfile();
         loader.completeStep(1);
         
+        // Étape 2.5: Vérifier la validité du token
+        loader.updateMessage('Vérification des permissions...');
+        const isTokenValid = await utils.validateToken(appState.token);
+        if (!isTokenValid) {
+            hideLoadingModal();
+            showPopup({
+                text: 'Session expirée. Redirection vers la connexion...',
+                type: 'warn',
+                position: 'center'
+            });
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 2000);
+            return;
+        }
+        
         // Étape 3: Récupérer les playlists
         loader.updateMessage('Récupération de vos playlists...');
         const playlists = await getUserPlaylists();
         loader.completeStep(2);
+        
+        // Vérifier si nous avons des playlists
+        if (!playlists || playlists.length === 0) {
+            hideLoadingModal();
+            showPopup({
+                text: 'Aucune playlist trouvée. Veuillez créer des playlists dans Spotify ou vérifier vos permissions.',
+                type: 'error',
+                position: 'center'
+            });
+            return;
+        }
         
         // Étape 4: Finaliser l'initialisation
         loader.updateMessage('Finalisation...');
@@ -42,7 +69,7 @@ async function initUI() {
         hideLoadingModal();
         
         // Afficher le sélecteur de playlist
-        //console.log('Playlists:', playlists);
+        console.log('[📋] Playlists disponibles:', playlists.length);
         showPlaylistSelectorModal(playlists, selected => {
             if (!selected.length) {
                 showPopup({
@@ -253,24 +280,28 @@ async function loadUserProfile() {
                 country: userData.country
             });
             
-            // Mettre à jour l'avatar du joueur
-            const playerAvatar = document.getElementById('playerAvatar');
-            if (playerAvatar) {
-                if (userData.images && userData.images.length > 0) {
-                    playerAvatar.src = userData.images[0].url;
-                    playerAvatar.alt = userData.display_name || 'Profil utilisateur';
-                    console.log('🖼️ Avatar mis à jour');
-                } else {
-                    // Garder l'image par défaut si pas d'image de profil
-                    console.log('ℹ️ Aucune image de profil trouvée, conservation de l\'avatar par défaut');
-                }
-            }
-            
             // Mettre à jour le nom du joueur
             const playerName = document.getElementById('playerName');
             if (playerName && userData.display_name) {
                 playerName.textContent = userData.display_name;
                 console.log('📝 Nom du joueur mis à jour:', userData.display_name);
+            }
+
+            // Mettre à jour l'avatar du joueur
+            const playerAvatar = document.getElementById('playerAvatar');
+            if (playerAvatar) {
+                if (userData.images && userData.images.length > 0) {
+                    playerAvatar.src = userData.images[0].url;
+                    console.log(userData);
+                    playerAvatar.alt = userData.display_name || 'Profil utilisateur';
+                    console.log('🖼️ Avatar mis à jour');
+                } else {
+                    // Garder l'image par défaut si pas d'image de profil
+                    if (playerName && userData.display_name) {
+                        playerAvatar.src = 'https://api.dicebear.com/9.x/personas/svg?seed=' + userData.display_name;
+                    }
+                    console.log('ℹ️ Aucune image de profil trouvée, conservation de l\'avatar par défaut');
+                }
             }
             
             // Mettre à jour le statut avec le pays si disponible
