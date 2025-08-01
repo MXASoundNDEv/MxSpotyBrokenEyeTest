@@ -2,9 +2,37 @@ const songInput = document.getElementById('songName') || document.getElementById
 const OptionsDiv = document.getElementById('OptionsDivBtn');
 const PlayerDiv = document.getElementById('PlayerDivBtn');
 const PlaylistDiv = document.getElementById('PlaylistDivBtn');
+const ReRollDiv = document.getElementById('ReRollDivBtn');
+
+// Wait for Spotify compatibility to be ready
+let spotifyReady = false;
+
+window.addEventListener('spotifyCompatibilityReady', () => {
+    spotifyReady = true;
+    console.log('✅ Spotify prêt pour game.js');
+});
+
+// Utility function to wait for Spotify to be ready
+function waitForSpotify() {
+    return new Promise((resolve) => {
+        if (spotifyReady && window.appState && window.utils) {
+            resolve();
+        } else {
+            const checkReady = setInterval(() => {
+                if (spotifyReady && window.appState && window.utils) {
+                    clearInterval(checkReady);
+                    resolve();
+                }
+            }, 50);
+        }
+    });
+}
 
 async function initUI() {
-    //console.log('Token detecte, initialisation de l\'interface...');
+    // Wait for Spotify to be ready
+    await waitForSpotify();
+    
+    console.log('🔄 Initialisation de l\'interface utilisateur...');
 
     // Afficher la modal de chargement avec les étapes
     const loadingSteps = [
@@ -94,6 +122,8 @@ async function initUI() {
 }
 
 async function updateTrackUI() {
+    await waitForSpotify();
+    
     const data = await getCurrentTrackData();
     const imageUrl = data?.image || 'https://placehold.co/300x300?text=No+Image';
     
@@ -443,6 +473,17 @@ PlaylistDiv.addEventListener('click', async () => {
         }
         loadPlaylist(selected[0].id);
     });
+});
+
+ReRollDiv.addEventListener('click', () => {
+    //console.log('ReRoll clicked');
+    if (appState.playlist && appState.playlist.length > 0) {
+        // Reset the current index to 0
+        appState.currentIndex = 0;
+
+        // Recharger la playlist
+        loadPlaylist(appState.playlist[0].id);
+    }
 });
 
 // Ajouter un event listener pour le bouton autoswipe

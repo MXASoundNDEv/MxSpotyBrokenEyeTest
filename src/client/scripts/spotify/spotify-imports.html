@@ -1,0 +1,49 @@
+<!-- spotify/spotify-imports.html - HTML imports for modular Spotify player -->
+
+<!-- 
+    Instructions d'utilisation :
+    
+    Remplacer l'ancienne importation :
+    <script src="/src/client/scripts/SpotifyV2.js"></script>
+    
+    Par cette nouvelle structure modulaire :
+    
+    Option 1 - Import ES6 modules (recommandé) :
+-->
+<script type="module">
+    import SpotifyApp from '/src/client/scripts/SpotifyV3.js';
+    // L'application est automatiquement initialisée
+</script>
+
+<!-- 
+    Option 2 - Import traditionnel (pour compatibilité) :
+    
+    Inclure tous les modules dans l'ordre :
+-->
+<!--
+<script type="module" src="/src/client/scripts/spotify/config/spotify-config.js"></script>
+<script type="module" src="/src/client/scripts/spotify/utils/spotify-utils.js"></script>
+<script type="module" src="/src/client/scripts/spotify/core/app-state.js"></script>
+<script type="module" src="/src/client/scripts/spotify/ui/dom-manager.js"></script>
+<script type="module" src="/src/client/scripts/spotify/api/spotify-api.js"></script>
+<script type="module" src="/src/client/scripts/spotify/player/spotify-player.js"></script>
+<script type="module" src="/src/client/scripts/spotify/managers/playlist-manager.js"></script>
+<script type="module" src="/src/client/scripts/spotify/features/autoswipe.js"></script>
+<script type="module" src="/src/client/scripts/SpotifyV3.js"></script>
+-->
+
+<!-- 
+    Les fonctions globales restent disponibles pour la compatibilité :
+    - window.spotifyApp.* (nouvelle interface orientée objet)
+    - window.loadPlaylist(), window.nextTrack(), etc. (anciennes fonctions)
+    
+    Exemples d'utilisation :
+    
+    // Nouvelle interface (recommandée)
+    window.spotifyApp.loadPlaylist('playlist_id');
+    window.spotifyApp.startAutoSwipe();
+    
+    // Ancienne interface (compatibilité)
+    loadPlaylist('playlist_id');
+    startAutoSwipe();
+-->

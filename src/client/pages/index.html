@@ -100,7 +100,7 @@
                     <div class="avatar-glow"></div>
                 </div>
                 <div class="player-details">
-                    <div id="playerName" class="player-name">Joueur</div>
+                    <div id="playerName" class="player-name">MXA</div>
                     <div id="playerStatus" class="player-status">🟢 En ligne</div>
                 </div>
             </div>
@@ -124,7 +124,11 @@
                     <span class="menu-text">Options</span>
                     <div class="menu-glow"></div>
                 </div>
-
+                <div id="ReRollDivBtn" class="menu-item options-btn">
+                    <span class="menu-icon">🔄</span>
+                    <span class="menu-text">Re-roll</span>
+                    <div class="menu-glow"></div>
+                </div>
                 <div id="autoswipe" class="menu-item autoswipe-btn">
                     <span class="menu-icon">🤖</span>
                     <span class="menu-text">AutoSwipe</span>
@@ -154,7 +158,8 @@
 
     <!-- Scripts -->
     <script src="/scripts/spotify-debug.js"></script>
-    <script src="/scripts/SpotifyV2.js"></script>
+    <script type="module" src="/scripts/SpotifyV3.js"></script>
+    <script src="/scripts/compatibility-bridge.js"></script>
     <script src="/scripts/Popup.js"></script>
     <script src="/scripts/game.js"></script>
 
