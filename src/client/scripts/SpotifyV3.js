@@ -25,7 +25,7 @@ class SpotifyApp {
         this.api = new SpotifyAPI(() => this.appState.token);
         this.player = new SpotifyPlayer(this.appState, this.uiUtils);
         this.playlistManager = new PlaylistManager(this.appState, this.uiUtils);
-        this.autoSwipe = new AutoSwipe(this.appState, this.player, this.uiUtils);
+        this.autoSwipe = new AutoSwipe  (this.appState, this.player, this.uiUtils);
         
         // Bind methods for global access
         this._bindGlobalMethods();
