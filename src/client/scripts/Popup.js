@@ -258,12 +258,29 @@ function showPlaylistSelectorModal(playlists = [], onConfirm) {
 }
 
 function ShowOptionsModal(Devices=[], onConfirm) {
-    const userOptions = JSON.parse(localStorage.getItem('userOptions'));
+    // Utiliser la fonction utilitaire sécurisée pour récupérer les options
+    let userOptions;
+    if (typeof utils !== 'undefined' && utils.getUserOptions) {
+        userOptions = utils.getUserOptions();
+    } else {
+        // Fallback sécurisé si utils n'est pas disponible
+        console.warn('⚠️ utils.getUserOptions non disponible, utilisation du fallback');
+        try {
+            const stored = localStorage.getItem('userOptions');
+            userOptions = stored ? JSON.parse(stored).Optionlist || {} : {};
+        } catch (error) {
+            console.warn('⚠️ Erreur lors du parsing des options:', error);
+            userOptions = {};
+        }
+    }
+    
     console.log('🔧 Chargement des options utilisateur:', userOptions);
-    let SongTime = userOptions.SongTime;// seconds
+    
+    // Valeurs par défaut si les options ne sont pas définies
+    let SongTime = userOptions.SongTime || 10; // seconds
     let PlayingDevice = null;
-    let RandomSong = userOptions.RandomSong;
-    let PlaylistMaxSongs = userOptions.PlaylistMaxSongs;
+    let RandomSong = userOptions.RandomSong !== undefined ? userOptions.RandomSong : true;
+    let PlaylistMaxSongs = userOptions.PlaylistMaxSongs || userOptions.MaxPlaylistSongs || 100;
 
     const wrapper = document.createElement('div');
     wrapper.style.display = 'flex';
