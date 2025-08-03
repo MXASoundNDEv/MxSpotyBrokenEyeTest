@@ -116,6 +116,8 @@ async function updateTrackUI() {
 function showSongInfo(trackData) {
     const songTitle = document.getElementById('songTitle');
     const songArtist = document.getElementById('songArtist');
+    console.log('Track data:', trackData);
+
     
     if (songTitle && trackData) {
         songTitle.textContent = `🎵 ${trackData.name}`;
@@ -123,7 +125,8 @@ function showSongInfo(trackData) {
     }
     
     if (songArtist && trackData) {
-        songArtist.textContent = `🎤 ${trackData.artists?.map(a => a.name).join(', ') || 'Artiste inconnu'}`;
+        console.log('Track data:', trackData);
+        songArtist.textContent = `🎤 ${trackData?.artists || 'Artiste inconnu'}`;
         songArtist.classList.add('revealed');
     }
 }
@@ -511,7 +514,7 @@ function initMobileCompatibility() {
                     window.mobileAPI.updateSong({
                         thumbnail: currentTrack.image,
                         title: currentTrack.name,
-                        artist: currentTrack.artists?.map(a => a.name).join(', '),
+                        artist: currentTrack.artists,
                         showTitle: true,
                         showArtist: true
                     });

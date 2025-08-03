@@ -360,6 +360,7 @@ app.get('/api/me/player', async (req, res) => {
 
     res.json({
       name: data.item.name,
+      artists: data.item.artists.map(artist => artist.name).join(', '),
       uri: data.item.uri,
       durationMs: data.item.duration_ms,
       positionMs: data.progress_ms,
