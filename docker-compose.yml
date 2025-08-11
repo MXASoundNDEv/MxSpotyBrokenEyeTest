@@ -13,7 +13,7 @@ services:
       - .env
     restart: unless-stopped
   healthcheck:
-    test: ["CMD", "node", "-e", "require('http').get('http://localhost:' + (process.env.PORT||3000) + '/health', r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"]
+    test: ["CMD", "wget", "-qO-", "http://${HOST}:${PORT}/health"]
     interval: 30s
     timeout: 5s
     retries: 3
