@@ -1,0 +1,39 @@
+version: '3.9'
+services:
+  app:
+    build: .
+    container_name: blindtest_app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - SPOTIFY_REDIRECT_URI=${SPOTIFY_REDIRECT_URI}
+    # Monter un .env local si souhaité
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:'+ (process.env.PORT||3000),r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+  # Pour le développement, décommentez le volume ci-dessous
+  # volumes:
+  #   - ./src:/app/src:ro
+
+  tests:
+    build:
+      context: .
+      target: test
+    container_name: blindtest_tests
+    environment:
+      - NODE_ENV=test
+      - SPOTIFY_TEST_TOKEN=${SPOTIFY_TEST_TOKEN}
+    depends_on:
+      - app
+    # Lance les tests puis se termine
+    command: ["npm", "test"]
