@@ -1,5 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
+import helmet from 'helmet';
+import compression from 'compression';
 const fetch = global.fetch;
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -8,7 +10,17 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { checkSongMatch } from './utils/Levenshtein.js'; // Utilitaires pour la correspondance de chansons
 
+// Chargement intelligent des variables d'environnement
+// Priorité: .env.<NODE_ENV> puis .env
+const runtimeEnv = process.env.NODE_ENV;
+const HOST = process.env.HOST
+if (runtimeEnv) {
+  const specificEnvFile = `.env.${runtimeEnv}`;
+  dotenv.config({ path: specificEnvFile });
+}
+// Toujours charger .env comme fallback (sans override pour conserver les spécifiques)
 dotenv.config();
+
 const app = express();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -18,6 +30,20 @@ const __dirname = path.dirname(__filename);
 app.use(cors());
 app.use(cookieParser());
 app.use(express.json());
+
+// Middlewares spécifiques production
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+  app.use(helmet({ crossOriginResourcePolicy: false }));
+  app.use(compression());
+  // Cache basique pour assets statiques
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && /\.(js|css|png|jpg|jpeg|gif|svg|woff2?)$/i.test(req.path)) {
+      res.setHeader('Cache-Control', 'public, max-age=3600, immutable');
+    }
+    next();
+  });
+}
 
 // Servir les fichiers statiques avec la nouvelle structure
 app.use('/scripts', express.static(path.join(__dirname, '../client/scripts')));
@@ -93,6 +119,9 @@ app.get('/login', (req, res) => {
     res.status(500).json({ error: 'Erreur serveur', details: err.message });
   }
 });
+
+// Health check route
+app.get('/health', (req, res) => res.status(200).send('ok'));
 
 app.get('/callback', async (req, res) => {
   const code = req.query.code;
@@ -519,9 +548,11 @@ async function getPlaylistTracks(playlistId, token) {
 
 // 🟢 Start
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log(`[🚀] Serveur en ligne : http://localhost:${PORT}`);
+  app.listen(PORT, HOST, () => {
+    console.log(`[🚀] Serveur en ligne sur ${HOST}:${PORT}`);
   });
 }
 
+
 export default app;
+  
