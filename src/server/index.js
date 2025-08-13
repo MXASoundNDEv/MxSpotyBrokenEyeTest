@@ -22,6 +22,7 @@ if (runtimeEnv) {
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', 1);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,9 +32,18 @@ app.use(cors());
 app.use(cookieParser());
 app.use(express.json());
 
+// Redirection HTTPS si nécessaire
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    if (req.protocol !== 'https') {
+      return res.redirect(`https://${req.get('host')}${req.originalUrl}`);
+    }
+    next();
+  });
+}
+
 // Middlewares spécifiques production
 if (process.env.NODE_ENV === 'production') {
-  app.set('trust proxy', 1);
   app.use(helmet({ crossOriginResourcePolicy: false }));
   app.use(compression());
   // Cache basique pour assets statiques
