@@ -276,6 +276,26 @@ Sélectionne ensuite une playlist et laisse‑toi guider pour deviner les titres
 - `node scripts/test-refresh-token.js` – validation des tokens
 - `node scripts/verify-tests.js` – vérification de l'intégrité des tests
 
+## 🔐 HTTPS avec Certbot
+
+Le fichier `docker-compose.yml` inclut désormais un service `certbot` et un proxy Nginx.
+Les certificats Let's Encrypt sont stockés dans `./data/certbot` et partagés avec
+Nginx via les volumes `./data/certbot:/etc/letsencrypt` et `./data/letsencrypt:/var/www/certbot`.
+
+### Création initiale du certificat
+
+```bash
+docker compose run --rm certbot certonly --webroot -w /var/www/certbot -d exemple.com
+```
+
+### Renouvellement automatique
+
+Ajoute une tâche cron sur l'hôte pour renouveler les certificats et recharger Nginx :
+
+```bash
+0 0 * * * docker compose run --rm certbot renew && docker compose exec nginx nginx -s reload
+```
+
 ## 🗂 Structure du projet détaillée
 
 ```text

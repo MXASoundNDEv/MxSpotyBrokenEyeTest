@@ -12,10 +12,33 @@ services:
     env_file:
       - .env
     restart: unless-stopped
-  healthcheck:
-    test: ["CMD", "wget", "-qO-", "http://${HOST}:${PORT}/health"]
-    interval: 30s
-    timeout: 5s
-    retries: 3
-    start_period: 10s
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
+  nginx:
+    image: nginx:alpine
+    container_name: blindtest_nginx
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./data/certbot:/etc/letsencrypt
+      - ./data/letsencrypt:/var/www/certbot
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - app
+    restart: unless-stopped
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./data/certbot:/etc/letsencrypt
+      - ./data/letsencrypt:/var/www/certbot
+    entrypoint: /bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot; sleep 12h & wait $${!}; done;'

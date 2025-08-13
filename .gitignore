@@ -46,4 +46,8 @@ client/debug.html
 src/client/pages/test
 src/client/scripts/test
 src/client/styles/test
+data/certbot/*
+!data/certbot/.gitkeep
+data/letsencrypt/*
+!data/letsencrypt/.gitkeep
 
