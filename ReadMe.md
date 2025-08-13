@@ -276,6 +276,57 @@ Sélectionne ensuite une playlist et laisse‑toi guider pour deviner les titres
 - `node scripts/test-refresh-token.js` – validation des tokens
 - `node scripts/verify-tests.js` – vérification de l'intégrité des tests
 
+## Déploiement en production
+
+Pour exposer l'application sur Internet, il est conseillé de placer le serveur Node derrière un reverse proxy **Nginx** et de protéger les connexions HTTPS avec **Let's Encrypt**.
+
+### Configuration Nginx
+
+Installe Nginx sur ton serveur puis crée un bloc serveur minimal :
+
+```nginx
+server {
+    server_name exemple.com;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Ce bloc redirige tout le trafic entrant vers l'application Node écoutant sur le port 3000.
+
+### Génération initiale des certificats
+
+Installe Certbot et son plugin Nginx puis génère un premier certificat Let's Encrypt :
+
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d exemple.com
+```
+
+Certbot configure automatiquement Nginx et crée les certificats TLS dans `/etc/letsencrypt/`.
+
+### Renouvellement automatique
+
+Certbot installe un service de renouvellement qui vérifie les certificats deux fois par jour. Tu peux vérifier son activation avec :
+
+```bash
+systemctl list-timers | grep certbot
+```
+
+À défaut, ajoute une tâche cron mensuelle :
+
+```bash
+0 3 * * * certbot renew --quiet
+```
+
+Les certificats seront ainsi renouvelés automatiquement avant expiration.
+
 ## 🗂 Structure du projet détaillée
 
 ```text
