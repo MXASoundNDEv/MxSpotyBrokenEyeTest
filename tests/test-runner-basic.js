@@ -121,15 +121,11 @@ await test('PUT /api/seek sans token => 400', async () => {
 // 🔍 Tests de structure des réponses
 console.log('\n🔍 Structure des Réponses');
 
-await test('GET /api/tracks/:id sans token => validation sécurité', async () => {
+await test('GET /api/tracks/:id sans token => 400', async () => {
     const res = await request(app).get('/api/tracks/4iV5W9uYEdYUVa79Axb7Rh');
     console.log(`   Response: ${res.statusCode} - ${JSON.stringify(res.body).slice(0, 80)}...`);
-    // L'API retourne 200 avec une erreur Spotify - c'est correct
-    expect(res.statusCode).toBe(200);
-    // Vérification que l'erreur Spotify est bien propagée
-    if (res.body.error) {
-        expect(res.body.error.status).toBeIn([400, 401, 403]);
-    }
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toContain('Token');
 });
 
 // 📊 Résumé des tests basiques
