@@ -12,10 +12,10 @@ services:
     env_file:
       - .env
     restart: unless-stopped
-  healthcheck:
-    test: ["CMD", "wget", "-qO-", "http://${HOST}:${PORT}/health"]
-    interval: 30s
-    timeout: 5s
-    retries: 3
-    start_period: 10s
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://${HOST}:${PORT}/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
