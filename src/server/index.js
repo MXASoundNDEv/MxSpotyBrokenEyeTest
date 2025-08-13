@@ -377,11 +377,28 @@ app.get('/api/me/player', async (req, res) => {
 app.get('/api/tracks/:id', async (req, res) => {
   const accessToken = req.query.token;
   const trackId = req.params.id;
-  const response = await fetch(`https://api.spotify.com/v1/tracks/${trackId}`, {
-    headers: { Authorization: `Bearer ${accessToken}` }
-  });
-  const data = await response.json();
-  res.json(data);
+
+  if (!accessToken) {
+    return res.status(400).json({ error: 'Token requis' });
+  }
+
+  try {
+    const response = await fetch(`https://api.spotify.com/v1/tracks/${trackId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('[❌] Erreur /api/tracks:', response.status, text);
+      return res.status(response.status).json({ error: text });
+    }
+
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    console.error('[🔥] Erreur /api/tracks:', err);
+    res.status(500).json({ error: 'Erreur serveur', details: err.message });
+  }
 });
 
 // GET Player devices
@@ -451,6 +468,10 @@ app.put('/api/play', async (req, res) => {
   const { device_id, token } = req.query;
   const { uris } = req.body;
 
+  if (!token) {
+    return res.status(400).json({ error: 'Token manquant' });
+  }
+
   if (!uris || !Array.isArray(uris)) {
     return res.status(400).json({ error: 'URIs manquants ou invalides dans le corps de la requête' });
   }
@@ -481,11 +502,21 @@ app.put('/api/play', async (req, res) => {
 // PUT seek
 app.put('/api/seek', async (req, res) => {
   const { position_ms, token } = req.query;
-  const response = await fetch(`https://api.spotify.com/v1/me/player/seek?position_ms=${position_ms}`, {
-    method: 'PUT',
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
-  res.sendStatus(response.status);
+
+  if (!token) {
+    return res.status(400).json({ error: 'Token manquant' });
+  }
+
+  try {
+    const response = await fetch(`https://api.spotify.com/v1/me/player/seek?position_ms=${position_ms}`, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    res.sendStatus(response.status);
+  } catch (err) {
+    console.error('[🔥] Erreur serveur /api/seek:', err);
+    res.status(500).json({ error: 'Erreur serveur', details: err.message });
+  }
 });
 
 
