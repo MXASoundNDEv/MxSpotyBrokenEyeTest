@@ -1,55 +1,65 @@
 version: '3.9'
+
 services:
   app:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
     container_name: blindtest_app
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - HOST=0.0.0.0
       - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
       - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
       - SPOTIFY_REDIRECT_URI=${SPOTIFY_REDIRECT_URI}
     env_file:
       - .env
+    networks:
+      - blindtest_network
     restart: unless-stopped
     expose:
-      - ${PORT}
-  nginx:
-    image: nginx:alpine
-    container_name: nginx_proxy
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - /etc/letsencrypt:/etc/letsencrypt:ro
-    depends_on:
-      - app
-  healthcheck:
-    test: ["CMD", "wget", "-qO-", "http://${HOST}:${PORT}/health"]
-    interval: 30s
-    timeout: 5s
-    retries: 3
-    start_period: 10s
+      - "3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   nginx:
-    image: nginx:alpine
+    image: docker.io/nginx:alpine
     container_name: blindtest_nginx
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./data/certbot:/etc/letsencrypt
-      - ./data/letsencrypt:/var/www/certbot
     ports:
       - "80:80"
       - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./data/ssl:/etc/letsencrypt/live/brokeneye.space:ro
+      - ./data/letsencrypt:/var/www/certbot:ro
+    networks:
+      - blindtest_network
     depends_on:
-      - app
+      app:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   certbot:
-    image: certbot/certbot
-    container_name: certbot
+    image: docker.io/certbot/certbot:latest
+    container_name: blindtest_certbot
     volumes:
       - ./data/certbot:/etc/letsencrypt
       - ./data/letsencrypt:/var/www/certbot
-    entrypoint: /bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot; sleep 12h & wait $${!}; done;'
+    networks:
+      - blindtest_network
+    entrypoint: /bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done;'
+    restart: unless-stopped
+
+networks:
+  blindtest_network:
+    driver: bridge

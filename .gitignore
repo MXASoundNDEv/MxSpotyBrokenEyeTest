@@ -18,6 +18,16 @@ other/
 *.cache
 *.pid
 *.seed
+
+# Production specific
+data/certbot/
+data/letsencrypt/
+logs/
+backups/
+*.tar.gz
+.podman/
+tmp/
+temp/
 *.tgz
 *.zip
 *.tar.gz
@@ -51,3 +61,8 @@ data/certbot/*
 data/letsencrypt/*
 !data/letsencrypt/.gitkeep
 test
+data/ssl/fullchain.pem
+data/ssl/privkey.pem
+DEPLOYMENT.md
+DEPLOY-BROKENEYE.md
+PRODUCTION-READY.md
