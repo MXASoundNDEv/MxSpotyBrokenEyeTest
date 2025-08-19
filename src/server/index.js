@@ -8,6 +8,7 @@ import cookieParser from 'cookie-parser';
 import querystring from 'querystring';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import { checkSongMatch } from './utils/Levenshtein.js'; // Utilitaires pour la correspondance de chansons
 
 // Chargement intelligent des variables d'environnement
@@ -32,9 +33,13 @@ app.use(cors());
 app.use(cookieParser());
 app.use(express.json());
 
-// Redirection HTTPS si nécessaire
+// Redirection HTTPS si nécessaire (sauf pour les health checks)
 if (process.env.NODE_ENV === 'production') {
   app.use((req, res, next) => {
+    // Exclure les health checks et endpoints internes de la redirection HTTPS
+    if (req.path === '/health' || req.path.startsWith('/health/') || req.headers['x-health-check']) {
+      return next();
+    }
     if (req.protocol !== 'https') {
       return res.redirect(`https://${req.get('host')}${req.originalUrl}`);
     }
@@ -42,9 +47,76 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
+// Middleware pour générer un nonce CSP
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    res.locals.cspNonce = generateRandomString(16);
+    next();
+  });
+}
+
 // Middlewares spécifiques production
 if (process.env.NODE_ENV === 'production') {
-  app.use(helmet({ crossOriginResourcePolicy: false }));
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: false, // OK pour images cross-origin
+      contentSecurityPolicy: {
+        useDefaults: false, // on définit explicitement
+        directives: {
+          "default-src": ["'self'"],
+
+          // Scripts : ton domaine + nonce + SDK Spotify
+          "script-src": [
+            "'self'",
+            (req, res) => `'nonce-${res.locals.cspNonce}'`,
+            "https://sdk.scdn.co",
+          ],
+          "script-src-elem": [
+            "'self'",
+            (req, res) => `'nonce-${res.locals.cspNonce}'`,
+            "https://sdk.scdn.co",
+          ],
+          "script-src-attr": ["'none'"],
+
+          // Requêtes réseau nécessaires au Web Playback SDK
+          "connect-src": [
+            "'self'",
+            "https://api.spotify.com",
+            "https://apresolve.spotify.com",
+            "wss://dealer.spotify.com",
+          ],
+
+          // Images (Spotify covers + GitHub logo)
+          "img-src": [
+            "'self'",
+            "data:",
+            "https://i.scdn.co",
+            "https://github.githubassets.com",
+            "https://mosaic.scdn.co/",
+            "https://image-cdn-fa.spotifycdn.com/image/",
+            "https://image-cdn-ak.spotifycdn.com/image/",
+          ],
+
+          // Autorise styles inline (facile). Pour être strict, remplace par un nonce/hash plus tard.
+          "style-src": ["'self'", "'unsafe-inline'"],
+          "font-src": ["'self'", "data:"],
+
+          // Iframe/popup d’auth Spotify si tu l’utilises
+          "frame-src": ["'self'", "https://accounts.spotify.com", 'https://sdk.scdn.co/'],
+          // Si tu ouvres des popups d’auth :
+          "frame-ancestors": ["'self'"],
+
+          "base-uri": ["'self'"],
+          "form-action": ["'self'"],
+          "object-src": ["'none'"],
+          "upgrade-insecure-requests": [],
+        },
+      },
+
+      // (optionnel) utile si tu fais l’auth dans une popup
+      crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+    })
+  );
   app.use(compression());
   // Cache basique pour assets statiques
   app.use((req, res, next) => {
@@ -64,8 +136,23 @@ app.use(express.static(path.join(__dirname, '../client')));
 
 
 app.get('/', (req, res) => {
-  // Redirection mobile désactivée - interface responsive utilisée
-  res.sendFile(path.join(__dirname, '../client/pages/index.html'));
+  if (process.env.NODE_ENV === 'production') {
+    // Lire le fichier HTML et injecter le nonce
+    const htmlPath = path.join(__dirname, '../client/pages/index.html');
+    fs.readFile(htmlPath, 'utf8', (err, data) => {
+      if (err) {
+        console.error('Erreur lecture index.html:', err);
+        return res.status(500).send('Erreur serveur');
+      }
+
+      // Remplacer le placeholder par le vrai nonce
+      const htmlWithNonce = data.replace(/nonce=""/g, `nonce="${res.locals.cspNonce}"`);
+      res.send(htmlWithNonce);
+    });
+  } else {
+    // En développement, servir directement
+    res.sendFile(path.join(__dirname, '../client/pages/index.html'));
+  }
 });
 
 
@@ -87,12 +174,12 @@ app.get('/login', (req, res) => {
       console.error('[❌] SPOTIFY_CLIENT_ID manquant dans .env');
       return res.status(500).json({ error: 'Configuration Spotify incomplète - CLIENT_ID manquant' });
     }
-    
+
     if (!client_secret) {
       console.error('[❌] SPOTIFY_CLIENT_SECRET manquant dans .env');
       return res.status(500).json({ error: 'Configuration Spotify incomplète - CLIENT_SECRET manquant' });
     }
-    
+
     if (!redirect_uri) {
       console.error('[❌] SPOTIFY_REDIRECT_URI manquant dans .env');
       return res.status(500).json({ error: 'Configuration Spotify incomplète - REDIRECT_URI manquant' });
@@ -173,7 +260,7 @@ app.get('/callback', async (req, res) => {
     }
 
     console.log('[✅] Token obtenu avec succès!');
-    
+
     // Redirection avec les tokens et durée d'expiration
     res.redirect('/#' + querystring.stringify({
       access_token: data.access_token,
@@ -189,14 +276,14 @@ app.get('/callback', async (req, res) => {
 // Route pour rafraîchir le token
 app.post('/api/refresh-token', async (req, res) => {
   const { refresh_token } = req.body;
-  
+
   if (!refresh_token) {
     return res.status(400).json({ error: 'Refresh token requis' });
   }
 
   try {
     console.log('[🔄] Rafraîchissement du token...');
-    
+
     const response = await fetch('https://accounts.spotify.com/api/token', {
       method: 'POST',
       headers: {
@@ -210,7 +297,7 @@ app.post('/api/refresh-token', async (req, res) => {
     });
 
     const data = await response.json();
-    
+
     if (data.error) {
       console.error('[❌] Erreur lors du rafraîchissement:', data);
       return res.status(400).json(data);
@@ -222,7 +309,7 @@ app.post('/api/refresh-token', async (req, res) => {
       expires_in: data.expires_in || 3600,
       refresh_token: data.refresh_token || refresh_token // Garder l'ancien si pas de nouveau
     });
-    
+
   } catch (err) {
     console.error('[🔥] Erreur rafraîchissement token:', err);
     res.status(500).json({ error: 'Erreur serveur', details: err.message });
@@ -249,12 +336,12 @@ app.get('/api/playlist/:id', async (req, res) => {
     res.json(results);
   } catch (err) {
     console.error('[🔥] Erreur /api/playlist:', err);
-    
+
     // Gestion complète des codes d'erreur Spotify selon la documentation officielle
     if (err.statusCode) {
       const statusCode = err.statusCode;
       let errorMessage = 'Erreur Spotify API';
-      
+
       switch (statusCode) {
         case 400:
           errorMessage = 'Requête invalide - ID de playlist incorrect ou format invalide';
@@ -283,15 +370,15 @@ app.get('/api/playlist/:id', async (req, res) => {
         default:
           errorMessage = `Erreur Spotify API non documentée: ${statusCode}`;
       }
-      
-      return res.status(statusCode).json({ 
+
+      return res.status(statusCode).json({
         error: errorMessage,
         spotifyError: err.spotifyError,
         statusCode: statusCode,
         isSpotifyError: true
       });
     }
-    
+
     res.status(500).json({ error: 'Erreur serveur', details: err.message });
   }
 });
@@ -306,7 +393,7 @@ app.get('/api/me/playlists', async (req, res) => {
 
   try {
     console.log('[📋] Récupération des playlists pour l\'utilisateur...');
-    
+
     const response = await fetch('https://api.spotify.com/v1/me/playlists?limit=50', {
       headers: { 'Authorization': 'Bearer ' + accessToken }
     });
@@ -319,30 +406,30 @@ app.get('/api/me/playlists', async (req, res) => {
         response: text,
         token: accessToken.substring(0, 20) + '...' // Log partiel du token pour debug
       });
-      
+
       // Si c'est une erreur d'autorisation, renvoyer un message plus clair
       if (response.status === 401) {
-        return res.status(401).json({ 
-          error: 'Token expiré ou invalide', 
-          needsReauth: true 
+        return res.status(401).json({
+          error: 'Token expiré ou invalide',
+          needsReauth: true
         });
       }
-      
-      return res.status(response.status).json({ 
+
+      return res.status(response.status).json({
         error: `Erreur Spotify API: ${response.status} ${response.statusText}`,
-        details: text 
+        details: text
       });
     }
 
     const data = await response.json();
     console.log('[✅] Playlists récupérées:', data.items?.length || 0);
-    
+
     // Vérification que data.items existe et est un tableau
     if (!data.items || !Array.isArray(data.items)) {
       console.warn('[⚠️] Aucune playlist trouvée ou format inattendu:', data);
       return res.json([]);
     }
-    
+
     const playlists = data.items
       .filter(p => p && p.id && p.name) // Filtrer les playlists invalides
       .map(p => ({
@@ -359,9 +446,9 @@ app.get('/api/me/playlists', async (req, res) => {
       stack: err.stack,
       token: accessToken ? accessToken.substring(0, 20) + '...' : 'undefined'
     });
-    res.status(500).json({ 
-      error: 'Erreur serveur interne', 
-      details: err.message 
+    res.status(500).json({
+      error: 'Erreur serveur interne',
+      details: err.message
     });
   }
 });
@@ -445,13 +532,13 @@ app.get('/api/me/player/devices', async (req, res) => {
     console.error('[🔥] Erreur /api/me/player/devices:', err);
     res.status(500).json({ error: 'Erreur serveur', details: err.message });
   }
-}); 
+});
 
 // GET User profile data
 app.get('/api/me', async (req, res) => {
   const accessToken = req.query.token;
   if (!accessToken) return res.status(400).json({ error: 'Token requis' });
-  
+
   try {
     const response = await fetch('https://api.spotify.com/v1/me', {
       headers: { Authorization: `Bearer ${accessToken}` }
@@ -540,7 +627,7 @@ async function getPlaylistTracks(playlistId, token) {
     if (!res.ok) {
       const errText = await res.text();
       console.error('[❌] Erreur Spotify API:', res.status, errText);
-      
+
       // Créer une erreur avec le code de statut pour une meilleure gestion
       const error = new Error(`Spotify API error: ${res.status}`);
       error.statusCode = res.status;
@@ -565,4 +652,3 @@ if (process.env.NODE_ENV !== 'test') {
 
 
 export default app;
-  

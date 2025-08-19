@@ -135,8 +135,10 @@
                     <span id="autoswipeStatus" class="autoswipe-status">⏸️</span>
                     <div class="menu-glow"></div>
                 </div>
-                <div id="Github" class="menu-item github-btn" onclick="window.open('https://github.com/MXASoundNDEv/MxSpotyBrokenEyeTest', '_blank')">
-                    <img id="githubIcon" src="https://github.githubassets.com/assets/GitHub-Mark-ea2971cee799.png" alt="GitHub" class="menu-icon">
+                <div id="Github" class="menu-item github-btn"
+                    onclick="window.open('https://github.com/MXASoundNDEv/MxSpotyBrokenEyeTest', '_blank')">
+                    <img id="githubIcon" src="https://github.githubassets.com/assets/GitHub-Mark-ea2971cee799.png"
+                        alt="GitHub" class="menu-icon">
                     <span class="menu-text">Github</span>
                     <div class="menu-glow"></div>
                 </div>
@@ -164,7 +166,7 @@
     <script src="/scripts/game.js"></script>
 
     <!-- Script d'optimisation responsive -->
-    <script>
+    <script nonce="">
         // Optimisations mobile
         document.addEventListener('DOMContentLoaded', () => {
             // Détection mobile
@@ -235,40 +237,40 @@
 
             // Test de redimensionnement
             const sizes = [{
-                    width: 1920,
-                    height: 1080,
-                    name: 'Desktop Large'
-                },
-                {
-                    width: 1366,
-                    height: 768,
-                    name: 'Desktop'
-                },
-                {
-                    width: 1024,
-                    height: 768,
-                    name: 'Tablet Landscape'
-                },
-                {
-                    width: 768,
-                    height: 1024,
-                    name: 'Tablet Portrait'
-                },
-                {
-                    width: 414,
-                    height: 896,
-                    name: 'iPhone Large'
-                },
-                {
-                    width: 375,
-                    height: 667,
-                    name: 'iPhone'
-                },
-                {
-                    width: 320,
-                    height: 568,
-                    name: 'iPhone Small'
-                }
+                width: 1920,
+                height: 1080,
+                name: 'Desktop Large'
+            },
+            {
+                width: 1366,
+                height: 768,
+                name: 'Desktop'
+            },
+            {
+                width: 1024,
+                height: 768,
+                name: 'Tablet Landscape'
+            },
+            {
+                width: 768,
+                height: 1024,
+                name: 'Tablet Portrait'
+            },
+            {
+                width: 414,
+                height: 896,
+                name: 'iPhone Large'
+            },
+            {
+                width: 375,
+                height: 667,
+                name: 'iPhone'
+            },
+            {
+                width: 320,
+                height: 568,
+                name: 'iPhone Small'
+            }
             ];
 
             console.log('Tailles de test disponibles:', sizes.map(s => s.name));

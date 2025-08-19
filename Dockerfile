@@ -41,9 +41,9 @@ RUN mkdir -p /app/logs && \
 # Changer vers l'utilisateur non-root
 USER blindtest
 
-# Health check intégré
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+# Health check optimisé pour Podman avec header anti-redirection HTTPS
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider --timeout=5 --header="x-health-check: true" http://localhost:3000/health || exit 1
 
 EXPOSE 3000
 

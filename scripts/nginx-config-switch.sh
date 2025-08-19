@@ -55,7 +55,9 @@ auto_configure() {
 restart_nginx() {
     echo "🔄 Redémarrage de Nginx..."
     cd /home/mxa/MxSpotyBrokenEyeTest
-    sudo podman restart blindtest_nginx 2>/dev/null || echo "Container nginx non trouvé, démarrage nécessaire"
+    sudo podman exec blindtest_nginx_new nginx -s reload 2>/dev/null || \
+    sudo podman restart blindtest_nginx_new 2>/dev/null || \
+    echo "❌ Container nginx non trouvé. Utilisez: ./scripts/deploy-production.sh"
 }
 
 case "$1" in

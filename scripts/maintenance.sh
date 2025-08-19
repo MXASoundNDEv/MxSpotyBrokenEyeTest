@@ -1,22 +1,26 @@
 #!/bin/bash
 
-# Script de monitoring et maintenance
-# Usage: ./scripts/maintenance.sh [status|logs|restart|backup|update]
+# Script de maintenance consolidé pour BrokenEye.Space
+# Usage: ./scripts/maintenance.sh {status|logs|restart|update|backup|cleanup}
 
 set -euo pipefail
+
+# Configuration
+DOMAIN="brokeneye.space"
+PUBLIC_IPV4="82.66.66.208"
+BACKUP_DIR="/var/backups/blindtest"
 
 # Couleurs
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
 log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-
-COMPOSE_FILE="docker-compose.yml"
-BACKUP_DIR="/var/backups/blindtest"
+log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
 
 show_status() {
     log_info "État des services:"
