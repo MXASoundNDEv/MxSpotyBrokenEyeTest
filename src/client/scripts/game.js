@@ -31,7 +31,7 @@ function waitForSpotify() {
 async function initUI() {
     // Wait for Spotify to be ready
     await waitForSpotify();
-    
+
     console.log('🔄 Initialisation de l\'interface utilisateur...');
 
     // Afficher la modal de chargement avec les étapes
@@ -41,19 +41,19 @@ async function initUI() {
         'Récupération des playlists...',
         'Initialisation de l\'interface...'
     ];
-    
+
     const loader = showLoadingModal('Initialisation de Spotify Blind Test...', loadingSteps);
 
     try {
         // Étape 1: Charger les options
         loader.completeStep(0);
         loadUserOptions();
-        
+
         // Étape 2: Charger le profil utilisateur
         loader.updateMessage('Chargement du profil utilisateur...');
         await loadUserProfile();
         loader.completeStep(1);
-        
+
         // Étape 2.5: Vérifier la validité du token
         loader.updateMessage('Vérification des permissions...');
         const isTokenValid = await utils.validateToken(appState.token);
@@ -69,12 +69,12 @@ async function initUI() {
             }, 2000);
             return;
         }
-        
+
         // Étape 3: Récupérer les playlists
         loader.updateMessage('Récupération de vos playlists...');
         const playlists = await getUserPlaylists();
         loader.completeStep(2);
-        
+
         // Vérifier si nous avons des playlists
         if (!playlists || playlists.length === 0) {
             hideLoadingModal();
@@ -85,17 +85,17 @@ async function initUI() {
             });
             return;
         }
-        
+
         // Étape 4: Finaliser l'initialisation
         loader.updateMessage('Finalisation...');
         loader.completeStep(3);
-        
+
         // Petite pause pour que l'utilisateur voie que tout est terminé
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         // Cacher la modal de chargement
         hideLoadingModal();
-        
+
         // Afficher le sélecteur de playlist
         console.log('[📋] Playlists disponibles:', playlists.length);
         showPlaylistSelectorModal(playlists, selected => {
@@ -123,22 +123,22 @@ async function initUI() {
 
 async function updateTrackUI() {
     await waitForSpotify();
-    
+
     const data = await getCurrentTrackData();
     const imageUrl = data?.image || 'https://placehold.co/300x300?text=No+Image';
-    
+
     // Update current track image
     if (appState.playlist[appState.currentIndex]) {
         appState.playlist[appState.currentIndex].image = imageUrl;
     }
-    
+
     // Update thumbnail
     const thumbnail = domElements.thumbnail;
     if (thumbnail) {
         thumbnail.src = imageUrl;
         thumbnail.style.filter = 'blur(1.5rem)';
     }
-    
+
     // Reset song info display
     hideSongInfo();
 }
@@ -146,12 +146,12 @@ async function updateTrackUI() {
 function showSongInfo(trackData) {
     const songTitle = document.getElementById('songTitle');
     const songArtist = document.getElementById('songArtist');
-    
+
     if (songTitle && trackData) {
         songTitle.textContent = `🎵 ${trackData.name}`;
         songTitle.classList.add('revealed');
     }
-    
+
     if (songArtist && trackData) {
         songArtist.textContent = `🎤 ${trackData.artists?.map(a => a.name).join(', ') || 'Artiste inconnu'}`;
         songArtist.classList.add('revealed');
@@ -161,12 +161,12 @@ function showSongInfo(trackData) {
 function hideSongInfo() {
     const songTitle = document.getElementById('songTitle');
     const songArtist = document.getElementById('songArtist');
-    
+
     if (songTitle) {
         songTitle.textContent = '🎵 Chanson mystère';
         songTitle.classList.remove('revealed');
     }
-    
+
     if (songArtist) {
         songArtist.textContent = '🎤 Artiste mystère';
         songArtist.classList.remove('revealed');
@@ -202,16 +202,16 @@ songInput?.addEventListener('keydown', async (event) => {
             if (thumbnail) {
                 thumbnail.style.filter = 'none';
             }
-            
+
             // Show the song name and artist
             showSongInfo(currentTrack);
-            
+
             // Mark current track as discovered using the sync function
             updateDiscoveredStatus(appState.currentIndex, true);
-            
+
             // AutoSwipe continue même quand la chanson est découverte
             // (suppression de l'arrêt automatique de l'autoswipe)
-            
+
             showPopup({
                 text: `🎉 Correct ! La chanson est : ${currentTrack.name}`,
                 type: 'success',
@@ -257,10 +257,10 @@ function updateHistoryPanel(playlistHistory = []) {
     // Mettre à jour les statistiques
     const discoveredCount = playlistHistory.filter(track => track.discovered).length;
     const totalCount = playlistHistory.length;
-    
+
     const discoveredCountEl = document.getElementById('discoveredCount');
     const totalCountEl = document.getElementById('totalCount');
-    
+
     if (discoveredCountEl) discoveredCountEl.textContent = discoveredCount;
     if (totalCountEl) totalCountEl.textContent = totalCount;
 
@@ -268,15 +268,15 @@ function updateHistoryPanel(playlistHistory = []) {
     playlistHistory.forEach((track, index) => {
         // Ne créer des éléments que pour les chansons qui ont été jouées (discovered ou passées)
         if (!track.discovered && !track.played) return;
-        
+
         const item = document.createElement('div');
         item.className = track.discovered ? 'history-item discovered' : 'history-item missed';
-        
+
         // Créer l'image
         const img = document.createElement('img');
         img.src = track.image || 'https://placehold.co/64x64?text=No+Image';
         img.alt = `${track.title || 'Titre inconnu'} - ${track.artist || 'Artiste inconnu'}`;
-        
+
         // Ajouter un badge selon le statut
         if (track.discovered) {
             const badge = document.createElement('div');
@@ -289,7 +289,7 @@ function updateHistoryPanel(playlistHistory = []) {
             badge.innerHTML = '❌';
             item.appendChild(badge);
         }
-        
+
         item.appendChild(img);
         historyGrid.appendChild(item);
     });
@@ -298,18 +298,77 @@ function updateHistoryPanel(playlistHistory = []) {
     updateHistoryPanel.isUpdating = false;
 }
 
+// Fonction pour ouvrir l'historique en plein écran sur mobile
+function openHistoryFullscreen() {
+    console.log('📱 Ouverture de l\'historique en plein écran');
+
+    // Récupérer les données d'historique actuelles
+    let historyData = [];
+
+    // Essayer de récupérer depuis la variable globale ou le stockage local
+    if (typeof currentGame !== 'undefined' && currentGame.playlistHistory) {
+        historyData = currentGame.playlistHistory.map(track => ({
+            id: track.id,
+            title: track.name || track.title,
+            artist: track.artist || (track.artists && track.artists[0]?.name),
+            image: track.image || (track.album?.images?.[0]?.url),
+            discovered: track.discovered || false
+        }));
+    } else if (typeof window.playlistHistory !== 'undefined') {
+        historyData = window.playlistHistory.map(track => ({
+            id: track.id,
+            title: track.name || track.title,
+            artist: track.artist || (track.artists && track.artists[0]?.name),
+            image: track.image || (track.album?.images?.[0]?.url),
+            discovered: track.discovered || false
+        }));
+    } else {
+        // Essayer de récupérer depuis le DOM
+        const historyGrid = document.getElementById('historyGrid');
+        if (historyGrid) {
+            const items = historyGrid.querySelectorAll('.history-item');
+            items.forEach((item, index) => {
+                const img = item.querySelector('img');
+                const isDiscovered = item.classList.contains('discovered');
+
+                historyData.push({
+                    id: `item-${index}`,
+                    title: item.title || `Chanson ${index + 1}`,
+                    artist: 'Artiste',
+                    image: img ? img.src : null,
+                    discovered: isDiscovered
+                });
+            });
+        }
+    }
+
+    console.log('📊 Données historique:', historyData.length, 'éléments');
+
+    // Appeler la fonction showHistoryModal du fichier Popup.js
+    if (typeof showHistoryModal === 'function') {
+        showHistoryModal(historyData);
+    } else {
+        console.error('❌ Fonction showHistoryModal non trouvée');
+        // Fallback simple
+        alert(`📊 Historique:\n${historyData.length} chansons au total\n${historyData.filter(t => t.discovered).length} découvertes`);
+    }
+}
+
+// Exposer la fonction globalement pour le bouton HTML
+window.openHistoryFullscreen = openHistoryFullscreen;
+
 async function loadUserProfile() {
     try {
         console.log('🔄 Chargement du profil utilisateur...');
         const userData = await getUserData();
-        
+
         if (userData) {
             console.log('👤 Données utilisateur reçues:', {
                 name: userData.display_name,
                 hasImages: userData.images && userData.images.length > 0,
                 country: userData.country
             });
-            
+
             // Mettre à jour le nom du joueur
             const playerName = document.getElementById('playerName');
             if (playerName && userData.display_name) {
@@ -333,13 +392,13 @@ async function loadUserProfile() {
                     console.log('ℹ️ Aucune image de profil trouvée, conservation de l\'avatar par défaut');
                 }
             }
-            
+
             // Mettre à jour le statut avec le pays si disponible
             const playerStatus = document.getElementById('playerStatus');
             if (playerStatus && userData.country) {
                 playerStatus.textContent = `🌍 ${userData.country}`;
             }
-            
+
             console.log('✅ Profil utilisateur chargé avec succès');
         } else {
             console.warn('⚠️ Aucune donnée utilisateur reçue');
@@ -357,7 +416,7 @@ function initUserOptions() {
     if (savedOptions) {
         loadUserOptions();
         return
-    }else {
+    } else {
         // Initialiser les options utilisateur avec des valeurs par défaut
         const defaultOptions = {
             SongTime: 10,
@@ -378,7 +437,7 @@ function loadUserOptions() {
     try {
         const options = JSON.parse(saved);
         //console.log('Options parsées:', options);
-        
+
         // Update appState with the correct property names
         if (typeof options.SongTime === 'number') {
             appState.autoSwipe.delay = options.SongTime * 1000;
@@ -398,7 +457,7 @@ function loadUserOptions() {
         if (typeof options.RandomSong === 'boolean') {
             console.log('🎲 Mélange aléatoire:', options.RandomSong ? 'activé' : 'désactivé');
         }
-        
+
         // Log de résumé des options chargées
         console.log('📋 Options chargées:', {
             songTime: options.SongTime,
@@ -496,11 +555,11 @@ document.getElementById('autoswipe').addEventListener('click', () => {
 function updateAutoSwipeButton() {
     const autoswipeBtn = document.getElementById('autoswipe');
     const autoswipeStatus = document.getElementById('autoswipeStatus');
-    
+
     if (!autoswipeBtn || !autoswipeStatus) return;
-    
+
     autoswipeBtn.classList.remove('running');
-    
+
     switch (appState.autoSwipe.status) {
         case 'running':
             autoswipeBtn.classList.add('running');
@@ -520,11 +579,11 @@ window.updateAutoSwipeButton = updateAutoSwipeButton;
 // Mobile compatibility functions
 function initMobileCompatibility() {
     console.log('🎯 Initialisation de la compatibilité mobile...');
-    
+
     // Fonction globale pour vérifier les réponses (compatible mobile)
-    window.checkGuess = async function(guess) {
+    window.checkGuess = async function (guess) {
         if (!guess || !guess.trim()) return false;
-        
+
         const currentTrack = await getCurrentTrackData();
         if (!currentTrack) return false;
 
@@ -543,10 +602,10 @@ function initMobileCompatibility() {
             if (match) {
                 // Show song info
                 showSongInfo(currentTrack);
-                
+
                 // Update discovered status
                 updateDiscoveredStatus(appState.currentIndex, true);
-                
+
                 // Update mobile interface if available
                 if (window.mobileAPI) {
                     window.mobileAPI.updateSong({
@@ -557,7 +616,7 @@ function initMobileCompatibility() {
                         showArtist: true
                     });
                 }
-                
+
                 return true;
             } else {
                 return false;
@@ -567,9 +626,9 @@ function initMobileCompatibility() {
             return false;
         }
     };
-    
+
     // Fonction globale pour chanson suivante (compatible mobile)
-    window.nextSong = function() {
+    window.nextSong = function () {
         nextTrack();
     };
 }

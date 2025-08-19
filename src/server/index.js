@@ -95,6 +95,7 @@ if (process.env.NODE_ENV === 'production') {
             "https://mosaic.scdn.co/",
             "https://image-cdn-fa.spotifycdn.com/image/",
             "https://image-cdn-ak.spotifycdn.com/image/",
+            "https://placehold.co/300x300?text=No+Image",
           ],
 
           // Autorise styles inline (facile). Pour être strict, remplace par un nonce/hash plus tard.

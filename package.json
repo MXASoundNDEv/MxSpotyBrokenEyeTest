@@ -8,7 +8,8 @@
     "test:basic": "node tests/test-runner-basic.js",
     "test:jest": "jest tests/routes-optimized.test.js",
     "start": "node src/server/index.js",
-    "serve": "node src/server/index.js"
+    "serve": "node src/server/index.js",
+    "dev": "node src/server/index.js"
   },
   "author": "",
   "license": "GPL-3.0",
