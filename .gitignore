@@ -66,3 +66,12 @@ data/ssl/privkey.pem
 DEPLOYMENT.md
 DEPLOY-BROKENEYE.md
 PRODUCTION-READY.md
+DEPLOYMENT-AUDIT.md
+scripts/clean-conflicts.sh
+scripts/diagnose-ipv6.sh
+scripts/test-connectivity.sh
+scripts/test-external-access.sh
+scripts/test-health.sh
+.gitignore
+scripts/test-ports.sh
+scripts/validate-final.sh
