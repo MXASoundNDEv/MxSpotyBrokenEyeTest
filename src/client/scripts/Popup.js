@@ -1,4 +1,6 @@
 let popup = null;
+let modalLock = false; // Lock pour éviter les modales simultanées
+let modalQueue = []; // Queue pour les modales en attente
 
 function showPopup({
     text,
@@ -77,15 +79,69 @@ function showPopup({
     }, duration + 500);
 }
 
-function showModal({
+async function showModal({
     title = 'Titre',
     content = null,
     onConfirm = null,
     onCancel = null,
     disablebuttons = false,
     disablecancel = false,
-    disableconfirm = false
+    disableconfirm = false,
+    priority = false // Priorité pour ignorer le lock
 }) {
+    return new Promise((resolve, reject) => {
+        const modalRequest = {
+            title,
+            content,
+            onConfirm,
+            onCancel,
+            disablebuttons,
+            disablecancel,
+            disableconfirm,
+            priority,
+            resolve,
+            reject
+        };
+
+        // Si une modale est déjà ouverte et pas de priorité, ajouter à la queue
+        if (modalLock && !priority) {
+            console.log(`⏳ Modale "${title}" ajoutée à la queue`);
+            modalQueue.push(modalRequest);
+            showModalQueueIndicator(); // Afficher l'indicateur
+            return;
+        }
+
+        // Si priorité et qu'une modale est ouverte, fermer la modale actuelle
+        if (priority && modalLock) {
+            console.log(`🚨 Modale prioritaire "${title}" - fermeture de la modale actuelle`);
+            const currentModal = document.querySelector('[id^="modal-"]');
+            if (currentModal) {
+                document.body.removeChild(currentModal);
+                modalLock = false;
+            }
+        }
+
+        _createModal(modalRequest);
+    });
+}
+
+function _createModal(modalRequest) {
+    const {
+        title,
+        content,
+        onConfirm,
+        onCancel,
+        disablebuttons,
+        disablecancel,
+        disableconfirm,
+        resolve,
+        reject
+    } = modalRequest;
+
+    // Verrouiller les nouvelles modales
+    modalLock = true;
+    console.log(`🔒 Modale "${title}" verrouillée`);
+
     const overlay = document.createElement('div');
     overlay.style.position = 'fixed';
     overlay.style.top = 0;
@@ -133,11 +189,34 @@ function showModal({
     }
 
     modal.appendChild(contentEl);
+
+    // Fonction de fermeture avec déverrouillage
+    const closeModal = (result = null) => {
+        try {
+            if (document.body.contains(overlay)) {
+                document.body.removeChild(overlay);
+            }
+        } catch (error) {
+            console.warn('Erreur lors de la fermeture de la modale:', error);
+        }
+
+        // Déverrouiller et traiter la queue
+        modalLock = false;
+        console.log(`🔓 Modale "${title}" déverrouillée`);
+
+        // Résoudre la promesse
+        if (resolve) resolve(result);
+
+        // Traiter la prochaine modale dans la queue
+        _processModalQueue();
+    };
+
     if (!disablebuttons) {
         const btnContainer = document.createElement('div');
         btnContainer.style.display = 'flex';
         btnContainer.style.justifyContent = 'flex-end';
         btnContainer.style.gap = 'var(--space-md)';
+
         if (!disablecancel) {
             const cancelBtn = document.createElement('button');
             cancelBtn.innerText = 'Annuler';
@@ -148,11 +227,11 @@ function showModal({
             cancelBtn.style.color = 'white';
             cancelBtn.onclick = () => {
                 if (onCancel) onCancel();
-                document.body.removeChild(overlay);
+                closeModal('cancel');
             };
             btnContainer.appendChild(cancelBtn);
-
         }
+
         if (!disableconfirm) {
             const confirmBtn = document.createElement('button');
             confirmBtn.innerText = 'Valider';
@@ -163,14 +242,97 @@ function showModal({
             confirmBtn.style.color = 'white';
             confirmBtn.onclick = () => {
                 if (onConfirm) onConfirm();
-                document.body.removeChild(overlay);
+                closeModal('confirm');
             };
             btnContainer.appendChild(confirmBtn);
         }
+
         modal.appendChild(btnContainer);
     }
+
+    // Fermer avec Escape
+    const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+            if (onCancel) onCancel();
+            closeModal('escape');
+            document.removeEventListener('keydown', handleEscape);
+        }
+    };
+    document.addEventListener('keydown', handleEscape);
+
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
+}
+
+// Traiter la queue des modales
+function _processModalQueue() {
+    if (modalQueue.length > 0 && !modalLock) {
+        const nextModal = modalQueue.shift();
+        console.log(`▶️ Traitement de la modale suivante: "${nextModal.title}"`);
+
+        // Mettre à jour l'indicateur
+        if (modalQueue.length > 0) {
+            showModalQueueIndicator();
+        } else {
+            hideModalQueueIndicator();
+        }
+
+        setTimeout(() => _createModal(nextModal), 100); // Petit délai pour éviter les conflits
+    } else if (modalQueue.length === 0) {
+        hideModalQueueIndicator();
+    }
+}
+
+// Afficher un indicateur visuel de la queue des modales
+function showModalQueueIndicator() {
+    const existingIndicator = document.getElementById('modal-queue-indicator');
+    if (existingIndicator) {
+        existingIndicator.textContent = `🕒 ${modalQueue.length} modale(s) en attente`;
+        return;
+    }
+
+    if (modalQueue.length === 0) return;
+
+    const indicator = document.createElement('div');
+    indicator.id = 'modal-queue-indicator';
+    indicator.className = 'modal-queue-indicator';
+    indicator.textContent = `🕒 ${modalQueue.length} modale(s) en attente`;
+
+    document.body.appendChild(indicator);
+
+    // Auto-masquer après 3 secondes
+    setTimeout(() => {
+        if (document.body.contains(indicator)) {
+            document.body.removeChild(indicator);
+        }
+    }, 3000);
+}
+
+// Masquer l'indicateur de queue
+function hideModalQueueIndicator() {
+    const indicator = document.getElementById('modal-queue-indicator');
+    if (indicator && document.body.contains(indicator)) {
+        document.body.removeChild(indicator);
+    }
+}
+
+// Exemple d'utilisation des nouvelles fonctionnalités
+async function exampleModalUsage() {
+    try {
+        // Attendre qu'aucune modale ne soit active
+        await waitForModalUnlock();
+
+        // Afficher une modale importante
+        const result = await showModal({
+            title: 'Confirmation',
+            content: 'Voulez-vous continuer ?',
+            priority: true
+        });
+
+        console.log('Résultat de la modale:', result);
+    } catch (error) {
+        console.error('Erreur avec la modale:', error);
+    }
 }
 
 function SpotifyconnectModal() {
@@ -202,11 +364,12 @@ function SpotifyconnectModal() {
             'Il te faut un compte Spotify Premium pour utiliser cette fonctionnalité.',
             loginSpotifyBtn
         ],
-        disablebuttons: true
+        disablebuttons: true,
+        priority: true // Priorité haute pour la connexion Spotify
     });
 }
 
-function showPlaylistSelectorModal(playlists = [], onConfirm) {
+async function showPlaylistSelectorModal(playlists = [], onConfirm) {
     const selected = new Set();
     console.log('📋 Playlists disponibles:', playlists);
     const wrapper = document.createElement('div');
@@ -255,7 +418,7 @@ function showPlaylistSelectorModal(playlists = [], onConfirm) {
         };
     });
 
-    showModal({
+    const result = await showModal({
         title: 'Choisis tes playlists',
         content: wrapper,
         onConfirm: () => {
@@ -264,39 +427,46 @@ function showPlaylistSelectorModal(playlists = [], onConfirm) {
         },
         disablecancel: true
     });
+
+    return result;
 }
 
-function ShowOptionsModal(Devices = [], onConfirm) {
-    // Utiliser la fonction utilitaire sécurisée pour récupérer les options
+async function ShowOptionsModal(Devices = [], onConfirm) {
     let userOptions;
+
+    // Debug: vérifier le contenu de localStorage
+    const storedData = localStorage.getItem('userOptions');
+    console.log('🔍 Données brutes localStorage:', storedData);
+
     if (typeof utils !== 'undefined' && utils.getUserOptions) {
         userOptions = utils.getUserOptions();
+        console.log('🔍 Options via utils.getUserOptions():', userOptions);
     } else {
-        // Fallback sécurisé si utils n'est pas disponible
-        console.warn('⚠️ utils.getUserOptions non disponible, utilisation du fallback');
         try {
             const stored = localStorage.getItem('userOptions');
-            userOptions = stored ? JSON.parse(stored).Optionlist || {} : {};
+            const parsedData = stored ? JSON.parse(stored) : {};
+            console.log('🔍 Données parsées:', parsedData);
+            userOptions = parsedData.Optionlist || {};
+            console.log('🔍 Options finales extraites:', userOptions);
         } catch (error) {
-            console.warn('⚠️ Erreur lors du parsing des options:', error);
+            console.warn('🔍 Erreur parsing localStorage:', error);
             userOptions = {};
         }
     }
 
-    console.log('🔧 Chargement des options utilisateur:', userOptions);
-
-    // Valeurs par défaut si les options ne sont pas définies
-    let SongTime = userOptions.SongTime || 10; // seconds
+    let SongTime = userOptions.SongTime || 10;
     let PlayingDevice = null;
     let RandomSong = userOptions.RandomSong !== undefined ? userOptions.RandomSong : true;
     let PlaylistMaxSongs = userOptions.PlaylistMaxSongs || userOptions.MaxPlaylistSongs || 100;
+    let RevealAtEnd = userOptions.RevealAtEnd !== undefined ? userOptions.RevealAtEnd : true;
+    let RevealDuration = userOptions.RevealDuration || 5000; // 5 seconds by default
+    let RevealOnlyUndiscovered = userOptions.RevealOnlyUndiscovered !== undefined ? userOptions.RevealOnlyUndiscovered : true; // true by default
 
     const wrapper = document.createElement('div');
     wrapper.style.display = 'flex';
     wrapper.style.flexDirection = 'column';
     wrapper.style.gap = '15px';
 
-    // Temps d'écoute
     const timeContainer = document.createElement('div');
     const timeLabel = document.createElement('label');
     timeLabel.innerText = 'Temps d’écoute (sec) :';
@@ -312,7 +482,6 @@ function ShowOptionsModal(Devices = [], onConfirm) {
     timeContainer.appendChild(timeLabel);
     timeContainer.appendChild(songTimeInput);
 
-    // Nombre maximum de chansons dans la playlist
     const playlistContainer = document.createElement('div');
     const playlistLabel = document.createElement('label');
     playlistLabel.innerText = 'Nombre maximum de chansons dans la playlist :';
@@ -328,10 +497,9 @@ function ShowOptionsModal(Devices = [], onConfirm) {
     playlistContainer.appendChild(playlistLabel);
     playlistContainer.appendChild(playlistInput);
 
-    // Choix du périphérique
     const deviceContainer = document.createElement('div');
     const deviceLabel = document.createElement('label');
-    deviceLabel.innerText = 'Périphérique de lecture :';
+    deviceLabel.innerText = 'Périphérique de lecture par défaut :';
     deviceLabel.style.marginBottom = '5px';
     const deviceSelect = document.createElement('select');
     deviceSelect.style.padding = '8px';
@@ -347,15 +515,11 @@ function ShowOptionsModal(Devices = [], onConfirm) {
         opt.text = dev.name;
         if (PlayingDevice && PlayingDevice.id === dev.id) opt.selected = true;
         deviceSelect.appendChild(opt);
-        console.log('Device option added:', dev.name);
-        console.log('Current Playing Device:', dev.id);
-
     });
 
     deviceContainer.appendChild(deviceLabel);
     deviceContainer.appendChild(deviceSelect);
 
-    // Lecture aléatoire
     const randomContainer = document.createElement('div');
     randomContainer.style.display = 'flex';
     randomContainer.style.alignItems = 'center';
@@ -369,32 +533,249 @@ function ShowOptionsModal(Devices = [], onConfirm) {
     randomContainer.appendChild(randomLabel);
     randomContainer.appendChild(randomToggle);
 
-    // Ajouter tout dans le wrapper
+    // RevealAtEnd option
+    const revealAtEndContainer = document.createElement('div');
+    revealAtEndContainer.style.display = 'flex';
+    revealAtEndContainer.style.alignItems = 'center';
+    revealAtEndContainer.style.gap = '10px';
+    const revealAtEndLabel = document.createElement('label');
+    revealAtEndLabel.innerText = 'Révéler à la fin du timer :';
+    const revealAtEndToggle = document.createElement('input');
+    revealAtEndToggle.type = 'checkbox';
+    revealAtEndToggle.checked = RevealAtEnd;
+    revealAtEndToggle.style.transform = 'scale(1.5)';
+    revealAtEndContainer.appendChild(revealAtEndLabel);
+    revealAtEndContainer.appendChild(revealAtEndToggle);
+
+    // RevealDuration option
+    const revealDurationContainer = document.createElement('div');
+    const revealDurationLabel = document.createElement('label');
+    revealDurationLabel.innerText = 'Durée de révélation (sec) :';
+    revealDurationLabel.style.marginBottom = '5px';
+    const revealDurationInput = document.createElement('input');
+    revealDurationInput.type = 'number';
+    revealDurationInput.min = '1';
+    revealDurationInput.max = '30';
+    revealDurationInput.value = Math.round((RevealDuration || 5000) / 1000); // Convert ms to seconds
+    revealDurationInput.style.padding = '8px';
+    revealDurationInput.style.borderRadius = '8px';
+    revealDurationInput.style.border = 'none';
+    revealDurationInput.style.background = '#2a2a50';
+    revealDurationInput.style.color = 'white';
+    revealDurationContainer.appendChild(revealDurationLabel);
+    revealDurationContainer.appendChild(revealDurationInput);
+
+    // RevealOnlyUndiscovered option
+    const revealModeContainer = document.createElement('div');
+    const revealModeLabel = document.createElement('label');
+    revealModeLabel.innerText = 'Révéler uniquement les chansons non découvertes :';
+    revealModeLabel.style.marginBottom = '5px';
+    const revealModeToggle = document.createElement('input');
+    revealModeToggle.type = 'checkbox';
+    revealModeToggle.checked = RevealOnlyUndiscovered;
+    revealModeToggle.style.transform = 'scale(1.5)';
+    revealModeContainer.style.display = 'flex';
+    revealModeContainer.style.alignItems = 'center';
+    revealModeContainer.style.gap = '10px';
+    revealModeContainer.appendChild(revealModeLabel);
+    revealModeContainer.appendChild(revealModeToggle);
+
+    // Toggle reveal mode visibility based on RevealAtEnd
+    const toggleRevealModeVisibility = () => {
+        revealModeContainer.style.display = revealAtEndToggle.checked ? 'flex' : 'none';
+    };
+
+    // Toggle reveal duration visibility based on RevealAtEnd
+    const toggleRevealDurationVisibility = () => {
+        revealDurationContainer.style.display = revealAtEndToggle.checked ? 'block' : 'none';
+    };
+
+    revealAtEndToggle.addEventListener('change', () => {
+        toggleRevealDurationVisibility();
+        toggleRevealModeVisibility();
+    });
+
+    toggleRevealDurationVisibility(); // Initial state
+    toggleRevealModeVisibility(); // Initial state
+
     wrapper.appendChild(playlistContainer);
     wrapper.appendChild(timeContainer);
     wrapper.appendChild(deviceContainer);
     wrapper.appendChild(randomContainer);
+    wrapper.appendChild(revealAtEndContainer);
+    wrapper.appendChild(revealDurationContainer);
+    wrapper.appendChild(revealModeContainer);
 
-    // Afficher la modal avec les boutons
-    showModal({
+    const result = await showModal({
         title: 'Options',
         content: wrapper,
         onConfirm: () => {
-            SongTime = parseInt(songTimeInput.value);
-            const selectedId = deviceSelect.value;
-            PlayingDevice = Devices.find(dev => dev.id === selectedId) || null;
-            RandomSong = randomToggle.checked;
-            PlaylistMaxSongs = parseInt(playlistInput.value) || 10;
-            if (typeof onConfirm === 'function') onConfirm({
-                Optionlist: {
-                    SongTime,
-                    PlayingDevice,
-                    RandomSong,
-                    PlaylistMaxSongs
-                }
-            });
+            const newOptions = {
+                SongTime: parseInt(songTimeInput.value),
+                PlayingDevice: Devices.find(dev => dev.id === deviceSelect.value) || null,
+                RandomSong: randomToggle.checked,
+                PlaylistMaxSongs: parseInt(playlistInput.value) || 10,
+                RevealAtEnd: revealAtEndToggle.checked,
+                RevealDuration: parseInt(revealDurationInput.value) * 1000, // Convert seconds to milliseconds
+                RevealOnlyUndiscovered: revealModeToggle.checked
+            };
+
+            console.log('🔧 Nouvelles options:', newOptions);
+            console.log('🔧 Options sauvegardées actuellement:', userOptions);
+
+            // Save all options (simplification de la logique)
+            const savedOptions = { ...userOptions, ...newOptions };
+
+            try {
+                localStorage.setItem('userOptions', JSON.stringify({ Optionlist: savedOptions }));
+                console.log('✅ Options sauvegardées avec succès:', savedOptions);
+            } catch (e) {
+                console.warn('❌ Erreur lors de la sauvegarde des options:', e);
+            }
+
+            if (typeof onConfirm === 'function') onConfirm({ Optionlist: savedOptions });
         }
     });
+
+    return result;
+}
+
+async function ShowDeviceList(Devices = [], onSelect) {
+    const selected = new Set();
+    console.log('🔊 Périphériques disponibles:', Devices);
+
+    const wrapper = document.createElement('div');
+    wrapper.style.display = 'grid';
+    wrapper.style.gridTemplateColumns = 'repeat(auto-fill, minmax(200px, 1fr))';
+    wrapper.style.gap = 'var(--space-md)';
+    wrapper.style.maxHeight = '400px';
+    wrapper.style.overflowY = 'auto';
+    wrapper.style.marginBottom = 'var(--space-lg)';
+
+    Devices.forEach(device => {
+        const card = document.createElement('div');
+        card.style.border = '2px solid transparent';
+        card.style.borderRadius = 'var(--radius-md)';
+        card.style.background = 'var(--primary-surface)';
+        card.style.padding = 'var(--space-md)';
+        card.style.cursor = 'pointer';
+        card.style.textAlign = 'center';
+        card.style.transition = 'var(--transition-normal)';
+        card.style.position = 'relative';
+
+        // Icône du périphérique selon le type
+        const icon = document.createElement('div');
+        icon.style.fontSize = '2.5rem';
+        icon.style.marginBottom = 'var(--space-sm)';
+
+        const deviceIcons = {
+            'Computer': '💻',
+            'computer': '💻',
+            'Smartphone': '📱',
+            'smartphone': '📱',
+            'Speaker': '🔊',
+            'speaker': '🔊',
+            'TV': '📺',
+            'tv': '📺',
+            'STB': '📺', // Set-top box (Freebox)
+            'stb': '📺',
+            'Game_Console': '🎮',
+            'game_console': '🎮',
+            'Cast_Audio': '📻',
+            'cast_audio': '📻',
+            'Cast_Video': '📽️',
+            'cast_video': '📽️',
+            'Automobile': '🚗',
+            'automobile': '🚗',
+            'unknown': '🎵'
+        };
+
+        icon.textContent = deviceIcons[device.type] || deviceIcons['unknown'];
+        card.appendChild(icon);
+
+        // Nom du périphérique
+        const name = document.createElement('div');
+        name.innerText = device.name || 'Périphérique sans nom';
+        name.style.fontSize = 'var(--font-size-base)';
+        name.style.fontWeight = 'var(--font-weight-medium)';
+        name.style.marginBottom = 'var(--space-xs)';
+        name.style.color = 'var(--primary-text)';
+        card.appendChild(name);
+
+        // Type du périphérique
+        const type = document.createElement('div');
+        const deviceType = device.type ? device.type.replace('_', ' ') : 'Inconnu';
+        type.innerText = deviceType.toUpperCase();
+        type.style.fontSize = 'var(--font-size-sm)';
+        type.style.color = 'var(--secondary-text)';
+        type.style.marginBottom = 'var(--space-xs)';
+        card.appendChild(type);
+
+        // Volume si supporté
+        if (device.supports_volume && device.volume_percent !== undefined && device.volume_percent !== null) {
+            const volume = document.createElement('div');
+            volume.innerText = `Volume: ${device.volume_percent}%`;
+            volume.style.fontSize = 'var(--font-size-sm)';
+            volume.style.color = 'var(--muted-text)';
+            card.appendChild(volume);
+        }
+
+        // Badge "Actif" si c'est le périphérique actuel
+        if (device.is_active) {
+            const activeBadge = document.createElement('div');
+            activeBadge.innerText = 'ACTIF';
+            activeBadge.style.position = 'absolute';
+            activeBadge.style.top = 'var(--space-xs)';
+            activeBadge.style.right = 'var(--space-xs)';
+            activeBadge.style.background = 'var(--success-color)';
+            activeBadge.style.color = 'white';
+            activeBadge.style.fontSize = 'var(--font-size-xs)';
+            activeBadge.style.padding = '2px 6px';
+            activeBadge.style.borderRadius = 'var(--radius-sm)';
+            activeBadge.style.fontWeight = 'var(--font-weight-bold)';
+            card.appendChild(activeBadge);
+        }
+
+        wrapper.appendChild(card);
+
+        card.onclick = () => {
+            // Désélectionner tous les autres périphériques (sélection unique)
+            document.querySelectorAll('.device-card-selected').forEach(el => {
+                el.style.borderColor = 'transparent';
+                el.style.background = 'var(--primary-surface)';
+                el.classList.remove('device-card-selected');
+            });
+
+            // Vider la sélection précédente
+            selected.clear();
+
+            // Sélectionner le périphérique actuel
+            selected.add(device.id);
+            card.style.borderColor = 'var(--primary-accent-light)';
+            card.style.background = 'var(--primary-surface-hover)';
+            card.classList.add('device-card-selected');
+        };
+
+        // Sélectionner automatiquement le périphérique actif s'il y en a un
+        if (device.is_active) {
+            selected.add(device.id);
+            card.style.borderColor = 'var(--primary-accent-light)';
+            card.style.background = 'var(--primary-surface-hover)';
+            card.classList.add('device-card-selected');
+        }
+    });
+
+    const result = await showModal({
+        title: 'Choisis ton périphérique',
+        content: wrapper,
+        onConfirm: () => {
+            const chosen = Devices.find(device => selected.has(device.id));
+            if (typeof onSelect === 'function') onSelect(chosen);
+        },
+        disablecancel: false
+    });
+
+    return result;
 }
 
 // Modal de chargement
@@ -610,7 +991,7 @@ function showHistoryModal(historyData = []) {
         { label: 'Découvertes', value: discovered, color: 'var(--success-color)' },
         { label: 'Manquées', value: missed, color: 'var(--error-color)' },
         { label: 'Total', value: total, color: 'var(--neon-cyan)' },
-        { label: 'Précision', value: total > 0 ? Math.round((discovered / total) * 100) + '%' : '0%', color: 'var(--neon-magenta)' }
+        { label: 'Précision', value: total > 0 ? Math.round((discovered / total) + 100) + '%' : '0%', color: 'var(--neon-magenta)' }
     ];
 
     stats.forEach(stat => {
@@ -753,4 +1134,3 @@ function showHistoryModal(historyData = []) {
     };
     document.addEventListener('keydown', handleEscape);
 }
-

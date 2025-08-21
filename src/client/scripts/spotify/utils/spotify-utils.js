@@ -9,12 +9,12 @@ export const utils = {
      * Parse URL hash parameters
      */
     parseUrlHash: () => Object.fromEntries(new URLSearchParams(window.location.hash.slice(1))),
-    
+
     /**
      * Parse URL search parameters
      */
     parseUrlParams: () => Object.fromEntries(new URLSearchParams(window.location.search)),
-    
+
     /**
      * Get Spotify token from various sources (URL, localStorage, sessionStorage)
      */
@@ -25,7 +25,7 @@ export const utils = {
         const storedToken = localStorage.getItem('spotify_access_token');
         const sessionToken = sessionStorage.getItem('spotify_access_token');
         const tokenExpiry = localStorage.getItem('spotify_token_expiry');
-        
+
         // Vérifier si le token stocké est expiré
         if (storedToken && tokenExpiry) {
             const now = Date.now();
@@ -37,35 +37,35 @@ export const utils = {
                 return null;
             }
         }
-        
+
         // Priorité : URL hash > URL params > localStorage > sessionStorage
-        const token = hashParams.access_token || 
-                     urlParams.access_token || 
-                     storedToken || 
-                     sessionToken;
-        
+        const token = hashParams.access_token ||
+            urlParams.access_token ||
+            storedToken ||
+            sessionToken;
+
         // Sauvegarder le token s'il est trouvé et pas déjà stocké
         if (token && token !== storedToken) {
             localStorage.setItem('spotify_access_token', token);
-            
+
             // Sauvegarder aussi le refresh token s'il est fourni
             if (hashParams.refresh_token || urlParams.refresh_token) {
                 const refreshToken = hashParams.refresh_token || urlParams.refresh_token;
                 localStorage.setItem('spotify_refresh_token', refreshToken);
                 console.log('🔄 Refresh token sauvegardé');
             }
-            
+
             // Calculer l'expiration (3600 secondes par défaut pour Spotify)
             const expiresIn = hashParams.expires_in || urlParams.expires_in || 3600;
             const expiryTime = Date.now() + (parseInt(expiresIn) * 1000);
             localStorage.setItem('spotify_token_expiry', expiryTime.toString());
-            
+
             console.log('🔐 Token Spotify sauvegardé avec expiration:', new Date(expiryTime));
         }
-        
+
         return token;
     },
-    
+
     /**
      * Get user options from localStorage
      */
@@ -78,7 +78,98 @@ export const utils = {
             return {};
         }
     },
-    
+
+    /**
+     * Reveal track information (image and title/artist)
+     */
+    revealTrackInfo: (track, duration = 5000) => {
+        if (!track) return Promise.resolve();
+
+        return new Promise((resolve) => {
+            // Support both simplified playlist track format and full Spotify API format
+            const trackName = track.name || track.title || 'Titre inconnu';
+            const trackImage = track.album?.images?.[0]?.url || track.image || 'https://placehold.co/300x300?text=No+Image';
+
+            // Gérer les différents formats d'artistes
+            let trackArtists;
+            if (Array.isArray(track.artists)) {
+                // Format Spotify API : tableau d'objets avec propriété 'name'
+                trackArtists = track.artists.map(a => a.name).join(', ');
+            } else if (typeof track.artists === 'string') {
+                // Format playlist simplifié : chaîne directe
+                trackArtists = track.artists;
+            } else {
+                // Fallback vers track.artist ou valeur par défaut
+                trackArtists = track.artist || 'Artiste inconnu';
+            }
+
+            console.log('🎭 Révélation des informations de la piste:', trackName);
+            console.log('🎭 Artistes:', trackArtists);            // Elements to update
+            const thumbnail = document.getElementById('thumbnail');
+            const songTitle = document.getElementById('songTitle');
+            const songArtist = document.getElementById('songArtist');
+            const albumOverlay = document.querySelector('.album-overlay');
+
+            if (thumbnail && trackImage) {
+                // Add reveal animation class
+                thumbnail.classList.add('revealing');
+                thumbnail.src = trackImage;
+            }
+
+            if (songTitle) {
+                songTitle.classList.add('revealing');
+                // Utiliser innerHTML pour séparer l'emoji du texte avec des spans
+                songTitle.innerHTML = `<span class="song-emoji">🎵</span> <span class="song-text">${trackName}</span>`;
+            }
+
+            if (songArtist) {
+                songArtist.classList.add('revealing');
+                // Utiliser innerHTML pour séparer l'emoji du texte avec des spans
+                songArtist.innerHTML = `<span class="song-emoji">🎤</span> <span class="song-text">${trackArtists}</span>`;
+            }
+
+            // Hide mystery overlay
+            if (albumOverlay) {
+                albumOverlay.style.opacity = '0';
+                albumOverlay.style.transition = 'opacity 0.3s ease';
+            }
+
+            // Show reveal notification
+            if (typeof showPopup === 'function') {
+                showPopup({
+                    text: `🎭 Révélation: ${trackName} - ${trackArtists}`,
+                    type: "info",
+                    duration: Math.min(duration, 3000)
+                });
+            }
+
+            // Restore mystery state after duration
+            setTimeout(() => {
+                if (thumbnail) {
+                    thumbnail.classList.remove('revealing');
+                    thumbnail.src = 'https://i.scdn.co/image/ab67616d00001e029c11e6241d59940a0157c75a'; // Default mystery image
+                }
+
+                if (songTitle) {
+                    songTitle.classList.remove('revealing');
+                    songTitle.innerHTML = '<span class="song-emoji">🎵</span> <span class="song-text">Chanson mystère</span>';
+                }
+
+                if (songArtist) {
+                    songArtist.classList.remove('revealing');
+                    songArtist.innerHTML = '<span class="song-emoji">🎤</span> <span class="song-text">Artiste mystère</span>';
+                }
+
+                if (albumOverlay) {
+                    albumOverlay.style.opacity = '1';
+                }
+
+                console.log('🎭 Fin de la révélation');
+                resolve();
+            }, duration);
+        });
+    },
+
     /**
      * Show error popup
      */
@@ -92,7 +183,7 @@ export const utils = {
             });
         }
     },
-    
+
     /**
      * Show info popup
      */
@@ -105,7 +196,7 @@ export const utils = {
             });
         }
     },
-    
+
     /**
      * Ensure player is ready for operations
      */
@@ -116,7 +207,7 @@ export const utils = {
         }
         return true;
     },
-    
+
     /**
      * Update token in app state and localStorage
      */
@@ -129,26 +220,26 @@ export const utils = {
         }
         return false;
     },
-    
+
     /**
      * Validate Spotify token
      */
     validateToken: async (token) => {
         if (!token) return false;
-        
+
         try {
             const response = await fetch('https://api.spotify.com/v1/me', {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
-            
+
             if (response.ok) {
                 console.log('✅ Token Spotify valide');
                 return true;
             } else if (response.status === 401) {
                 console.warn('🔐 Token Spotify invalide/expiré, tentative de rafraîchissement...');
-                
+
                 // Essayer de rafraîchir le token automatiquement
                 const refreshed = await utils.refreshToken();
                 if (refreshed) {
@@ -167,7 +258,7 @@ export const utils = {
             console.error('❌ Erreur lors de la validation du token:', error);
             return false;
         }
-        
+
         return false;
     },
 
@@ -183,7 +274,7 @@ export const utils = {
 
         try {
             console.log('[🔄] Tentative de rafraîchissement du token...');
-            
+
             const response = await fetch('/api/refresh-token', {
                 method: 'POST',
                 headers: {
@@ -197,33 +288,33 @@ export const utils = {
             }
 
             const data = await response.json();
-            
+
             // Sauvegarder le nouveau token
             localStorage.setItem('spotify_access_token', data.access_token);
             const expiryTime = Date.now() + (parseInt(data.expires_in) * 1000);
             localStorage.setItem('spotify_token_expiry', expiryTime.toString());
-            
+
             // Mettre à jour le refresh token s'il a changé
             if (data.refresh_token) {
                 localStorage.setItem('spotify_refresh_token', data.refresh_token);
             }
-            
+
             // Mettre à jour l'état de l'application si fourni
             if (appState) {
                 appState.token = data.access_token;
             }
-            
+
             console.log('[✅] Token rafraîchi avec succès');
             return true;
-            
+
         } catch (error) {
             console.error('[❌] Erreur lors du rafraîchissement du token:', error);
-            
+
             // Nettoyer les tokens invalides
             localStorage.removeItem('spotify_access_token');
             localStorage.removeItem('spotify_refresh_token');
             localStorage.removeItem('spotify_token_expiry');
-            
+
             return false;
         }
     }

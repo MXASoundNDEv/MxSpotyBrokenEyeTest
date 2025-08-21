@@ -5,7 +5,7 @@
  * Configuration constants for the Spotify Player application
  */
 export const CONFIG = {
-    PLAYER_NAME: 'Blindtest Player',
+    PLAYER_NAME: 'BrokenEye',
     DEFAULT_VOLUME: 0.5,
     PROGRESS_UPDATE_INTERVAL: 100,
     AUTOSWIPE_MIN_DELAY: 1000,
@@ -14,7 +14,12 @@ export const CONFIG = {
     DEFAULT_MAX_SONGS: 10,
     SEEK_OFFSET_RANGE: 20000,
     TRACK_LOAD_DELAY: 1000,
-    AUTOSWIPE_RESTART_DELAY: 500
+    AUTOSWIPE_RESTART_DELAY: 500,
+
+    // RevealAtEnd configuration
+    DEFAULT_REVEAL_AT_END: true,
+    DEFAULT_REVEAL_DURATION: 5000, // 5 seconds to show the reveal
+    REVEAL_FADE_DURATION: 300 // Animation duration for reveal
 };
 
 /**

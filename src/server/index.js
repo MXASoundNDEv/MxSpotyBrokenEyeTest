@@ -9,7 +9,7 @@ import querystring from 'querystring';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import { checkSongMatch } from './utils/Levenshtein.js'; // Utilitaires pour la correspondance de chansons
+import { checkSongMatch, getDetailedMatchAnalysis } from './utils/logic.js'; // Utilitaires pour la correspondance de chansons
 
 // Chargement intelligent des variables d'environnement
 // Priorité: .env.<NODE_ENV> puis .env
@@ -76,7 +76,7 @@ if (process.env.NODE_ENV === 'production') {
             (req, res) => `'nonce-${res.locals.cspNonce}'`,
             "https://sdk.scdn.co",
           ],
-          "script-src-attr": ["'none'"],
+          "script-src-attr": ["'https://github.com/MXASoundNDEv/MxSpotyBrokenEyeTest'"],
 
           // Requêtes réseau nécessaires au Web Playback SDK
           "connect-src": [
@@ -560,16 +560,68 @@ app.get('/api/me', async (req, res) => {
   }
 });
 
-// Function to check if song matches with Levenshtein distance
+// Advanced song matching with detailed scoring system
 app.post('/api/check-song', (req, res) => {
+  const { songName, currentTrack, detailed = false } = req.body;
+
+  if (!songName || !currentTrack) {
+    return res.status(400).json({
+      match: false,
+      error: 'Chanson ou donnée manquante',
+      score: 0,
+      quality: 'POOR'
+    });
+  }
+
+  try {
+    if (detailed) {
+      // Analyse complète avec tous les détails
+      const analysis = getDetailedMatchAnalysis(songName, currentTrack);
+      return res.json({
+        match: analysis.finalDecision,
+        detailed: true,
+        ...analysis
+      });
+    } else {
+      // Match simple avec informations de base
+      const result = checkSongMatch(songName, currentTrack, true);
+      return res.json({
+        match: typeof result === 'boolean' ? result : result.isValid,
+        score: typeof result === 'object' ? result.score : (result ? 1 : 0),
+        quality: typeof result === 'object' ? result.quality : (result ? 'PERFECT' : 'POOR'),
+        detailed: false
+      });
+    }
+  } catch (error) {
+    console.error('[🔥] Erreur lors de la vérification du match:', error);
+    return res.status(500).json({
+      match: false,
+      error: 'Erreur serveur lors de la vérification',
+      details: error.message
+    });
+  }
+});
+
+// Endpoint for detailed song match analysis (useful for debugging/tuning)
+app.post('/api/analyze-song-match', (req, res) => {
   const { songName, currentTrack } = req.body;
 
   if (!songName || !currentTrack) {
-    return res.status(400).json({ match: false, error: 'Chanson ou donnée manquante' });
+    return res.status(400).json({
+      error: 'Chanson ou donnée manquante'
+    });
   }
 
-  const match = checkSongMatch(songName, currentTrack);
-  res.json({ match });
+  try {
+    const analysis = getDetailedMatchAnalysis(songName, currentTrack);
+    res.json(analysis);
+  } catch (error) {
+    console.error('[🔥] Erreur lors de l\'analyse détaillée:', error);
+    res.status(500).json({
+      error: 'Erreur serveur lors de l\'analyse',
+      details: error.message
+    });
+  }
 });
 
 // PUT play track

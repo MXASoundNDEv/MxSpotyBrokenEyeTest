@@ -979,10 +979,44 @@ input {
 .song-title {
     font-size: var(--font-size-xl);
     font-weight: var(--font-weight-semibold);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
 }
 
 .song-artist {
     font-size: var(--font-size-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+/* Styles pour les emojis et le texte séparés */
+.song-emoji {
+    font-size: 1.2em;
+    flex-shrink: 0;
+    opacity: 0.8;
+    transition: all var(--transition-fast);
+}
+
+.song-text {
+    flex: 1;
+    min-width: 0; /* Permet la troncature si nécessaire */
+    font-weight: inherit;
+}
+
+/* Animation spéciale pour les emojis lors de la révélation */
+.song-title.revealing .song-emoji,
+.song-artist.revealing .song-emoji {
+    animation: emoji-bounce 0.4s ease-in-out;
+    opacity: 1;
+}
+
+.song-title.revealed .song-emoji,
+.song-artist.revealed .song-emoji {
+    opacity: 1;
+    color: var(--neon-magenta);
+    text-shadow: 0 0 8px var(--neon-magenta-glow);
 }
 
 .song-title.revealed,
@@ -991,20 +1025,63 @@ input {
     border-color: var(--neon-cyan);
     box-shadow: var(--shadow-glow);
     text-shadow: 0 0 12px currentColor;
-    animation: reveal-glow 1.2s ease;
+    animation: reveal-glow 0.6s ease;
+}
+
+/* Animation pour la révélation en cours (classe revealing) */
+.song-title.revealing,
+.song-artist.revealing {
+    animation: reveal-pulse 0.4s ease-in-out;
+    color: var(--neon-cyan);
+    border-color: var(--neon-cyan);
+    box-shadow: var(--shadow-glow);
+    text-shadow: 0 0 12px currentColor;
 }
 
 @keyframes reveal-glow {
     0% { 
         box-shadow: 0 0 0 rgba(0, 255, 255, 0); 
         transform: scale(1);
+        opacity: 0.7;
     }
-    50% { 
+    30% { 
         box-shadow: 0 0 30px var(--neon-cyan-glow); 
-        transform: scale(1.02);
+        transform: scale(1.03);
+        opacity: 0.9;
     }
     100% { 
         box-shadow: var(--shadow-glow); 
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes reveal-pulse {
+    0% { 
+        transform: scale(1);
+        box-shadow: 0 0 0 rgba(0, 255, 255, 0);
+    }
+    50% { 
+        transform: scale(1.05);
+        box-shadow: 0 0 25px var(--neon-cyan-glow);
+    }
+    100% { 
+        transform: scale(1);
+        box-shadow: var(--shadow-glow);
+    }
+}
+
+@keyframes emoji-bounce {
+    0% { 
+        transform: scale(1);
+    }
+    30% { 
+        transform: scale(1.3);
+    }
+    60% { 
+        transform: scale(1.1);
+    }
+    100% { 
         transform: scale(1);
     }
 }
@@ -1472,6 +1549,17 @@ input {
         padding: 10px 16px;
         font-size: 14px;
         margin-bottom: 8px;
+        gap: var(--space-xs); /* Réduire l'espace entre emoji et texte sur mobile */
+    }
+    
+    /* Ajustements pour les emojis sur mobile */
+    .song-emoji {
+        font-size: 1.1em; /* Légèrement plus petit sur mobile */
+    }
+    
+    .song-text {
+        font-size: inherit;
+        line-height: 1.3;
     }
     
     /* Right panel en dropdown uniquement en haut à droite */
@@ -2882,6 +2970,64 @@ body.mobile-optimized {
     }
 }
 
+/* ===== MODAL LOCK SYSTEM STYLES ===== */
+.modal-locked-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+    z-index: 10001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-queue-indicator {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--glass-bg-medium);
+    border: 2px solid var(--neon-cyan);
+    border-radius: var(--radius-lg);
+    padding: var(--space-md);
+    color: var(--neon-cyan);
+    font-size: var(--font-size-sm);
+    z-index: 10002;
+    animation: queue-pulse 2s ease-in-out infinite;
+    backdrop-filter: var(--glass-backdrop);
+}
+
+.modal-priority-override {
+    border-color: var(--error-color) !important;
+    box-shadow: 0 0 20px var(--error-color) !important;
+    animation: priority-flash 0.5s ease-in-out 3;
+}
+
+@keyframes queue-pulse {
+    0%, 100% { 
+        box-shadow: 0 0 10px var(--neon-cyan-glow); 
+        transform: scale(1);
+    }
+    50% { 
+        box-shadow: 0 0 25px var(--neon-cyan-glow); 
+        transform: scale(1.02);
+    }
+}
+
+@keyframes priority-flash {
+    0%, 100% { 
+        border-color: var(--error-color);
+        box-shadow: 0 0 20px var(--error-color);
+    }
+    50% { 
+        border-color: var(--neon-cyan);
+        box-shadow: 0 0 30px var(--neon-cyan-glow);
+    }
+}
+
 @supports not (backdrop-filter: blur(12px)) {
     .glass-effect,
     .topbar,
@@ -2890,4 +3036,100 @@ body.mobile-optimized {
     .right-panel {
         background: var(--primary-surface);
     }
+}
+
+/* ===== REVEALATEND STYLES ===== */
+.revealing {
+    animation: track-reveal 0.6s ease-out forwards;
+    position: relative;
+}
+
+.revealing::before {
+    content: '🎭';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 3rem;
+    z-index: 10;
+    animation: reveal-icon-pulse 0.8s ease-in-out;
+    pointer-events: none;
+}
+
+@keyframes track-reveal {
+    0% { 
+        opacity: 0.3;
+        transform: scale(0.95);
+        filter: blur(5px) brightness(0.5);
+    }
+    50% { 
+        opacity: 0.8;
+        transform: scale(1.05);
+        filter: blur(2px) brightness(1.2);
+        box-shadow: 0 0 25px var(--neon-cyan-glow);
+    }
+    100% { 
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0) brightness(1);
+        box-shadow: 0 0 15px var(--neon-cyan-glow);
+    }
+}
+
+@keyframes reveal-icon-pulse {
+    0% { 
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.5);
+    }
+    30% { 
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.2);
+        text-shadow: 0 0 20px var(--neon-magenta);
+    }
+    70% { 
+        opacity: 0.8;
+        transform: translate(-50%, -50%) scale(1);
+    }
+    100% { 
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+}
+
+/* Révélation des éléments texte */
+.song-title.revealing,
+.song-artist.revealing {
+    color: var(--neon-cyan);
+    text-shadow: 0 0 10px currentColor;
+    animation: text-reveal 0.8s ease-out;
+}
+
+@keyframes text-reveal {
+    0% { 
+        opacity: 0;
+        transform: translateY(-20px);
+        color: var(--secondary-text);
+        text-shadow: none;
+    }
+    50% { 
+        opacity: 0.8;
+        transform: translateY(-5px);
+        color: var(--neon-cyan);
+        text-shadow: 0 0 20px currentColor;
+    }
+    100% { 
+        opacity: 1;
+        transform: translateY(0);
+        color: var(--neon-cyan);
+        text-shadow: 0 0 10px currentColor;
+    }
+}
+
+/* Album overlay fade out pour révélation */
+.album-overlay {
+    transition: opacity var(--transition-slow);
+}
+
+.album-overlay.revealing {
+    opacity: 0 !important;
 }

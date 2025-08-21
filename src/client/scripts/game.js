@@ -96,6 +96,31 @@ async function initUI() {
         // Cacher la modal de chargement
         hideLoadingModal();
 
+        // Afficher les mise a jour
+        console.log('🔄 Affichage des mises à jour...');
+        const changelogContent = `
+            <h3>Changelog - Version 1.0</h3>
+            <ul>
+                <li>Ajout du choix du device</li>
+                <li>Amélioration de l'interface utilisateur pour les mobiles.(pas encore terminé)</li>
+                <li>Correction de bugs mineurs.</li>
+                <li>Optimisation des performances du lecteur audio.</li>
+            </ul>
+            <p>Merci pour votre soutien et vos retours !</p>
+        `;
+        await showModal({
+            title: 'Mises à jour',
+            content: changelogContent,
+            disablecancel: true,
+            buttons: [
+                {
+                    text: 'Fermer',
+                    onClick: () => hideModal()
+
+                }
+            ]
+        });
+
         // Afficher le sélecteur de playlist
         console.log('[📋] Playlists disponibles:', playlists.length);
         showPlaylistSelectorModal(playlists, selected => {
@@ -182,7 +207,7 @@ songInput?.addEventListener('keydown', async (event) => {
         const currentTrack = await getCurrentTrackData();
         if (!currentTrack) return;
 
-        // Appel au serveur pour vérifier la correspondance
+        // Appel au serveur pour vérifier la correspondance avec scoring avancé
         const res = await fetch('/api/check-song', {
             method: 'POST',
             headers: {
@@ -190,11 +215,15 @@ songInput?.addEventListener('keydown', async (event) => {
             },
             body: JSON.stringify({
                 songName,
-                currentTrack
+                currentTrack,
+                detailed: false // Utilise le mode simple pour la performance
             })
         });
 
-        const { match } = await res.json();
+        const result = await res.json();
+        const { match, score = 0, quality = 'POOR', matchType = 'unknown' } = result;
+
+        console.log(`🎵 Match result: ${match} (Score: ${score.toFixed(3)}, Quality: ${quality}, Type: ${matchType})`);
 
         if (match) {
             // Remove blur effect and show song info
@@ -212,8 +241,49 @@ songInput?.addEventListener('keydown', async (event) => {
             // AutoSwipe continue même quand la chanson est découverte
             // (suppression de l'arrêt automatique de l'autoswipe)
 
-            showPopup({
-                text: `🎉 Correct ! La chanson est : ${currentTrack.name}`,
+            // Message personnalisé selon la qualité et le type de match
+            let successMessage = `🎉 Correct ! La chanson est : ${currentTrack.name}`;
+            let qualityEmoji = '✨';
+            let typeInfo = '';
+
+            // Emoji selon la qualité
+            switch (quality) {
+                case 'PERFECT':
+                    qualityEmoji = '🎯';
+                    successMessage += ` ${qualityEmoji} Match parfait !`;
+                    break;
+                case 'EXCELLENT':
+                    qualityEmoji = '⭐';
+                    successMessage += ` ${qualityEmoji} Excellent !`;
+                    break;
+                case 'GOOD':
+                    qualityEmoji = '👍';
+                    successMessage += ` ${qualityEmoji} Bien joué !`;
+                    break;
+                case 'ACCEPTABLE':
+                    qualityEmoji = '✅';
+                    successMessage += ` ${qualityEmoji} Pas mal !`;
+                    break;
+            }
+
+            // Information sur le type de match trouvé
+            switch (matchType) {
+                case 'artist':
+                    typeInfo = ' (Match sur l\'artiste)';
+                    break;
+                case 'title':
+                    typeInfo = ' (Match sur le titre)';
+                    break;
+                case 'artist_title':
+                    typeInfo = ' (Match sur artiste + titre)';
+                    break;
+                case 'title_artist':
+                    typeInfo = ' (Match sur titre + artiste)';
+                    break;
+            }
+
+            successMessage += typeInfo; showPopup({
+                text: successMessage,
                 type: 'success',
                 position: 'top-right',
                 duration: 2500,
@@ -435,7 +505,9 @@ function loadUserOptions() {
     if (!saved) return;
 
     try {
-        const options = JSON.parse(saved);
+        const parsedData = JSON.parse(saved);
+        // Les options sont maintenant sous parsedData.Optionlist
+        const options = parsedData.Optionlist || parsedData;
         //console.log('Options parsées:', options);
 
         // Update appState with the correct property names
@@ -458,12 +530,26 @@ function loadUserOptions() {
             console.log('🎲 Mélange aléatoire:', options.RandomSong ? 'activé' : 'désactivé');
         }
 
+        // Nouvelles options RevealAtEnd
+        if (typeof options.RevealAtEnd === 'boolean') {
+            console.log('🎭 RevealAtEnd:', options.RevealAtEnd ? 'activé' : 'désactivé');
+        }
+        if (typeof options.RevealDuration === 'number') {
+            console.log('⏱️ Durée de révélation:', options.RevealDuration + 'ms');
+        }
+        if (typeof options.RevealOnlyUndiscovered === 'boolean') {
+            console.log('🎭 RevealOnlyUndiscovered:', options.RevealOnlyUndiscovered ? 'activé' : 'désactivé');
+        }
+
         // Log de résumé des options chargées
         console.log('📋 Options chargées:', {
             songTime: options.SongTime,
             maxSongs: options.MaxPlaylistSongs || options.PlaylistMaxSongs,
             autoSwipe: options.AutoSwipeEnabled,
-            randomSong: options.RandomSong
+            randomSong: options.RandomSong,
+            revealAtEnd: options.RevealAtEnd,
+            revealDuration: options.RevealDuration,
+            revealOnlyUndiscovered: options.RevealOnlyUndiscovered
         });
     } catch (e) {
         console.error("Erreur de chargement des options utilisateur :", e);
@@ -501,7 +587,8 @@ OptionsDiv.addEventListener('click', async () => {
     //console.log('Devices:', devices);
     ShowOptionsModal(devices, options => {
         //console.log('Options selected:', options);
-        localStorage.setItem('userOptions', JSON.stringify(options.Optionlist));
+        // Ne pas re-sauvegarder ici car c'est déjà fait dans ShowOptionsModal
+        // localStorage.setItem('userOptions', JSON.stringify(options.Optionlist));
 
         // Reload user options to apply them immediately
         loadUserOptions();
@@ -513,8 +600,17 @@ OptionsDiv.addEventListener('click', async () => {
     });
 });
 
-PlayerDiv.addEventListener('click', () => {
-    NotImplemented();
+PlayerDiv.addEventListener('click', async () => {
+    const devices = await getDevices();
+    console.log('Devices:', devices);
+    ShowDeviceList(devices, selected => {
+        if (!selected || !selected.id) {
+            return;
+        }
+
+        // Set the selected device as the playing device
+        setPlayingDevice(selected.id);
+    });
 });
 
 PlaylistDiv.addEventListener('click', async () => {
@@ -593,11 +689,15 @@ function initMobileCompatibility() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     songName: guess.trim(),
-                    currentTrack
+                    currentTrack,
+                    detailed: false
                 })
             });
 
-            const { match } = await res.json();
+            const result = await res.json();
+            const { match, score = 0, quality = 'POOR' } = result;
+
+            console.log(`🎵 Mobile match result: ${match} (Score: ${score.toFixed(3)}, Quality: ${quality})`);
 
             if (match) {
                 // Show song info
@@ -605,6 +705,31 @@ function initMobileCompatibility() {
 
                 // Update discovered status
                 updateDiscoveredStatus(appState.currentIndex, true);
+
+                // Notification de succès avec qualité du match
+                let qualityEmoji = '✨';
+                let qualityText = '';
+
+                switch (quality) {
+                    case 'PERFECT':
+                        qualityEmoji = '🎯';
+                        qualityText = ' - Match parfait !';
+                        break;
+                    case 'EXCELLENT':
+                        qualityEmoji = '⭐';
+                        qualityText = ' - Excellent !';
+                        break;
+                    case 'GOOD':
+                        qualityEmoji = '👍';
+                        qualityText = ' - Bien joué !';
+                        break;
+                    case 'ACCEPTABLE':
+                        qualityEmoji = '✅';
+                        qualityText = ' - Pas mal !';
+                        break;
+                }
+
+                console.log(`${qualityEmoji} Correct${qualityText} Score: ${score.toFixed(3)}`);
 
                 // Update mobile interface if available
                 if (window.mobileAPI) {
@@ -632,3 +757,64 @@ function initMobileCompatibility() {
         nextTrack();
     };
 }
+
+// Fonction utilitaire pour obtenir une analyse détaillée d'un match
+async function getDetailedSongAnalysis(songName, currentTrack) {
+    try {
+        const res = await fetch('/api/analyze-song-match', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                songName: songName.trim(),
+                currentTrack
+            })
+        });
+
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
+        const analysis = await res.json();
+        console.log('🔍 Analyse détaillée du match:', analysis);
+        return analysis;
+    } catch (error) {
+        console.error('❌ Erreur lors de l\'analyse détaillée:', error);
+        return null;
+    }
+}
+
+// Fonction pour afficher les statistiques de match dans la console (debug)
+window.debugSongMatch = async function (guess, target = null) {
+    const currentTrack = target || await getCurrentTrackData();
+    if (!currentTrack) {
+        console.log('❌ Aucune piste en cours');
+        return;
+    }
+
+    console.log('🎵 === ANALYSE DÉTAILLÉE DE MATCH ===');
+    console.log(`   Input: "${guess}"`);
+    console.log(`   Cible: "${currentTrack.name}"`);
+
+    const analysis = await getDetailedSongAnalysis(guess, currentTrack);
+
+    if (analysis) {
+        console.log(`   Décision finale: ${analysis.finalDecision ? '✅ ACCEPTÉ' : '❌ REFUSÉ'}`);
+        console.log(`   Meilleur score: ${analysis.bestMatch.score.toFixed(3)}`);
+        console.log(`   Qualité: ${analysis.bestMatch.details.quality}`);
+        console.log(`   Meilleure variante: ${analysis.bestMatch.variant}`);
+        console.log('   Détails par variante:');
+
+        analysis.results.forEach(result => {
+            console.log(`     ${result.variant}: ${result.weightedScore.toFixed(3)} (${result.quality})`);
+        });
+
+        console.log('   Scores bruts (meilleure variante):');
+        const bestDetails = analysis.bestMatch.details;
+        Object.entries(bestDetails.rawScores).forEach(([algo, score]) => {
+            console.log(`     ${algo}: ${score.toFixed(3)}`);
+        });
+    }
+
+    console.log('🎵 === FIN ANALYSE ===');
+    return analysis;
+};

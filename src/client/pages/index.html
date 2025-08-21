@@ -77,10 +77,14 @@
             <!-- Song Info Display -->
             <div class="song-info">
                 <div class="song-title-container">
-                    <div id="songTitle" class="song-title">🎵 Chanson mystère</div>
+                    <div id="songTitle" class="song-title">
+                        <span class="song-emoji">🎵</span> <span class="song-text">Chanson mystère</span>
+                    </div>
                 </div>
                 <div class="song-artist-container">
-                    <div id="songArtist" class="song-artist">🎤 Artiste mystère</div>
+                    <div id="songArtist" class="song-artist">
+                        <span class="song-emoji">🎤</span> <span class="song-text">Artiste mystère</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -135,8 +139,7 @@
                     <span id="autoswipeStatus" class="autoswipe-status">⏸️</span>
                     <div class="menu-glow"></div>
                 </div>
-                <div id="Github" class="menu-item github-btn"
-                    onclick="window.open('https://github.com/MXASoundNDEv/MxSpotyBrokenEyeTest', '_blank')">
+                <div id="Github" class="menu-item github-btn">
                     <img id="githubIcon" src="https://github.githubassets.com/assets/GitHub-Mark-ea2971cee799.png"
                         alt="GitHub" class="menu-icon">
                     <span class="menu-text">Github</span>
@@ -166,8 +169,8 @@
     <script src="/scripts/game.js"></script>
 
     <!-- Script d'optimisation responsive -->
-    <script nonce="">
-        // Optimisations mobile
+    <script>
+        // Optimisations mobile et gestionnaire GitHub
         document.addEventListener('DOMContentLoaded', () => {
             // Détection mobile
             const isMobile = window.innerWidth <= 768 ||
@@ -224,6 +227,58 @@
                         }, 150);
                     });
                 });
+            }
+
+            // Gestionnaire pour le bouton GitHub (compatible production/Podman)
+            const githubBtn = document.getElementById('Github');
+            if (githubBtn) {
+                githubBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const githubUrl = 'https://github.com/MXASoundNDEv/MxSpotyBrokenEyeTest';
+                    
+                    // Tentative d'ouverture dans un nouvel onglet
+                    try {
+                        // Méthode 1: window.open avec fallback
+                        const newWindow = window.open(githubUrl, '_blank', 'noopener,noreferrer');
+                        
+                        // Si window.open échoue (bloqué par le navigateur)
+                        if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
+                            // Méthode 2: Créer un lien temporaire et le cliquer
+                            const link = document.createElement('a');
+                            link.href = githubUrl;
+                            link.target = '_blank';
+                            link.rel = 'noopener noreferrer';
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        }
+                    } catch (error) {
+                        console.warn('Erreur lors de l\'ouverture du lien GitHub:', error);
+                        
+                        // Méthode 3: Fallback - redirection dans le même onglet
+                        if (confirm('Ouvrir le repository GitHub ? (Cela vous redirigera vers GitHub)')) {
+                            window.location.href = githubUrl;
+                        }
+                    }
+                });
+                
+                // Feedback visuel pour le bouton
+                githubBtn.addEventListener('mouseenter', () => {
+                    githubBtn.style.transform = 'translateY(-2px)';
+                });
+                
+                githubBtn.addEventListener('mouseleave', () => {
+                    githubBtn.style.transform = 'translateY(0)';
+                });
+                
+                // Feedback tactile sur mobile
+                if ('vibrate' in navigator) {
+                    githubBtn.addEventListener('touchstart', () => {
+                        navigator.vibrate(10);
+                    });
+                }
             }
         });
 

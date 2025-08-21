@@ -20,16 +20,16 @@ class SpotifyApp {
         this.utils = utils;
         this.uiUtils = uiUtils;
         this.domElements = domElements;
-        
+
         // Initialize managers
         this.api = new SpotifyAPI(() => this.appState.token);
         this.player = new SpotifyPlayer(this.appState, this.uiUtils);
         this.playlistManager = new PlaylistManager(this.appState, this.uiUtils);
-        this.autoSwipe = new AutoSwipe  (this.appState, this.player, this.uiUtils);
-        
+        this.autoSwipe = new AutoSwipe(this.appState, this.player, this.uiUtils);
+
         // Bind methods for global access
         this._bindGlobalMethods();
-        
+
         // Initialize on DOM ready
         this._initializeOnDOMReady();
     }
@@ -63,7 +63,7 @@ class SpotifyApp {
             togglePlayPause: () => this.player.togglePlayPause(),
             updateSoundVolume: (volume) => this.player.updateSoundVolume(volume),
             setPlayingDevice: (deviceId) => this.player.setPlayingDevice(deviceId),
-            
+
             // Playlist management
             loadPlaylist: async (id) => {
                 const firstTrack = await this.playlistManager.loadPlaylist(id);
@@ -73,7 +73,7 @@ class SpotifyApp {
             clearPlaylist: () => this.playlistManager.clearPlaylist(),
             getUserPlaylists: () => this.playlistManager.getUserPlaylists(),
             getUserData: () => this.playlistManager.getUserData(),
-            
+
             // AutoSwipe controls
             startAutoSwipe: () => this.autoSwipe.startAutoSwipe(),
             stopAutoSwipe: () => this.autoSwipe.stopAutoSwipe(),
@@ -81,11 +81,26 @@ class SpotifyApp {
             resumeAutoSwipe: () => this.autoSwipe.resumeAutoSwipe(),
             toggleAutoSwipe: () => this.autoSwipe.toggleAutoSwipe(),
             setAutoSwipeDelay: (delay) => this.autoSwipe.setAutoSwipeDelay(delay),
-            
+
+            // RevealAtEnd controls
+            revealCurrentTrack: (duration, forceReveal = false) => {
+                const currentTrack = this.appState.getCurrentTrack();
+                if (currentTrack) {
+                    // Si forceReveal est true (usage manuel) ou si la chanson n'est pas découverte
+                    if (forceReveal || !currentTrack.discovered) {
+                        return this.utils.revealTrackInfo(currentTrack, duration);
+                    } else {
+                        console.log('🎭 Chanson déjà découverte, révélation ignorée');
+                        return Promise.resolve();
+                    }
+                }
+                return Promise.resolve();
+            },
+
             // API functions
             getCurrentTrackData: () => this.api.getCurrentTrackData(),
             getTrackIDData: (id) => this.api.getTrackIDData(id),
-            
+
             // Utility functions
             updateDiscoveredStatus: (trackIndex, discovered) => {
                 this.playlistManager.updateDiscoveredStatus(trackIndex, discovered);
@@ -93,12 +108,12 @@ class SpotifyApp {
             markTrackAsPlayed: (trackIndex) => {
                 this.playlistManager.markTrackAsPlayed(trackIndex);
             },
-            
+
             // Access to core objects
             getAppState: () => this.appState,
             getUtils: () => this.utils,
             getDomElements: () => this.domElements,
-            
+
             // Debug functions
             debugMarkCurrentAsPlayed: () => {
                 this.playlistManager.markTrackAsPlayed(this.appState.currentIndex);
@@ -126,6 +141,21 @@ class SpotifyApp {
         window.updateSoundVolume = (volume) => this.player.updateSoundVolume(volume);
         window.setPlayingDevice = (deviceId) => this.player.setPlayingDevice(deviceId);
 
+        // RevealAtEnd functions
+        window.revealCurrentTrack = (duration, forceReveal = false) => {
+            const currentTrack = this.appState.getCurrentTrack();
+            if (currentTrack) {
+                // Si forceReveal est true (usage manuel) ou si la chanson n'est pas découverte
+                if (forceReveal || !currentTrack.discovered) {
+                    return this.utils.revealTrackInfo(currentTrack, duration);
+                } else {
+                    console.log('🎭 Chanson déjà découverte, révélation ignorée');
+                    return Promise.resolve();
+                }
+            }
+            return Promise.resolve();
+        };
+
         // Debug functions
         window.debugMarkCurrentAsPlayed = () => {
             this.playlistManager.markTrackAsPlayed(this.appState.currentIndex);
@@ -146,7 +176,7 @@ class SpotifyApp {
                 return;
             }
             window.spotifyAppInitialized = true;
-            
+
             this._validateAndInitialize();
         });
     }
@@ -167,15 +197,15 @@ class SpotifyApp {
                 }
             }
         }
-        
+
         if (this.appState.token) {
             console.log('🎵 Initialisation avec token valide');
-            
+
             // Nettoyer l'URL des tokens pour la sécurité
             if (window.location.hash.includes('access_token')) {
                 window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
             }
-            
+
             await this.player.initPlayer();
         } else {
             console.warn('❌ Aucune connexion Spotify valide détectée');
@@ -191,7 +221,7 @@ class SpotifyApp {
     async handlePlaylistLoaded(firstTrack) {
         if (firstTrack) {
             await this.player.playTrack(firstTrack);
-            
+
             // Redémarrer l'autoswipe si activé
             if (this.appState.autoSwipe.enabled) {
                 setTimeout(() => {
