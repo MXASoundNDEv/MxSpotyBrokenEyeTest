@@ -78,3 +78,5 @@ scripts/validate-final.sh
 scripts/deploy-dev.sh
 scripts/deploy-production.sh
 .env.development
+COCKPIT-IMPROVEMENTS.md
+DEPLOY-DEV-FIXES.md
