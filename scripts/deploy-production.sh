@@ -718,7 +718,7 @@ ok "✅ Nettoyage terminé"
 log "📦 Création du pod $POD_NAME avec ports 80/443..."
 sudo podman pod create \
     --name "$POD_NAME" \
-    -p 80:80 -p 443:443
+    -p 80:80 -p 443:443 -p 9100:9100
 ok "✅ Pod créé"
 
 # Démarrage de l'application dans le pod
@@ -731,6 +731,7 @@ sudo podman run -d \
     -e NODE_ENV=production \
     -e PORT=3000 \
     -e HOST=0.0.0.0 \
+    -e METRICS_PORT=9100 \
     --health-cmd='wget --no-verbose --tries=1 --spider --timeout=5 http://127.0.0.1:3000/health || exit 1' \
     --health-interval=30s \
     --health-timeout=10s \
