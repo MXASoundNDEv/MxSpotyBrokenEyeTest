@@ -30,6 +30,7 @@ FROM base AS dev
 ENV NODE_ENV=development
 ENV PORT=3000
 ENV HOST=0.0.0.0
+ENV METRICS_PORT=9100
 
 WORKDIR /app
 
@@ -48,7 +49,7 @@ USER blindtest
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider --timeout=5 --header="x-health-check: true" http://localhost:3000/health || exit 1
 
-EXPOSE 3000
+EXPOSE 3000 9100
 
 # Point d'entrée pour le développement
 ENTRYPOINT ["/sbin/tini", "--"]
@@ -60,6 +61,7 @@ FROM base AS runner
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOST=0.0.0.0
+ENV METRICS_PORT=9100
 
 WORKDIR /app
 
@@ -80,7 +82,7 @@ USER blindtest
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider --timeout=5 --header="x-health-check: true" http://localhost:3000/health || exit 1
 
-EXPOSE 3000
+EXPOSE 3000 9100
 
 # Utiliser tini comme init système pour une gestion propre des signaux
 ENTRYPOINT ["/sbin/tini", "--"]

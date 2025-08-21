@@ -307,6 +307,15 @@ Ajoute une tâche cron sur l'hôte pour renouveler les certificats et recharger 
 
 ## Déploiement en production
 
+### Podman
+
+Le script `scripts/deploy-production.sh` utilise **Podman**. Lors d'un déploiement manuel, pensez à exposer également le port des métriques :
+
+```bash
+sudo podman pod create -p 80:80 -p 443:443 -p 9100:9100
+sudo podman run --pod blindtest -e METRICS_PORT=9100 ...
+```
+
 Pour exposer l'application sur Internet, il est conseillé de placer le serveur Node derrière un reverse proxy **Nginx** et de protéger les connexions HTTPS avec **Let's Encrypt**.
 
 ### Configuration Nginx
