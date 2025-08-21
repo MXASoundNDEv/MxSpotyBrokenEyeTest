@@ -7,7 +7,15 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0a0a1a">
-    <title>Spotify Blind Test - Cyberpunk Edition</title>
+    <meta property="og:type" content="Game">
+    <meta property="og:title" content="BrokenEye">
+    <meta property="og:description"
+        content="BrokenEye est un jeu interactif qui met à l'épreuve vos connaissances musicales.">
+    <meta property="og:image" content="./assets/images/brokeneye.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="BrokenEye">
+    <title>BrokenEye</title>
     <link rel="stylesheet" href="/styles/style-responsive.css">
     <script src="https://sdk.scdn.co/spotify-player.js"></script>
 </head>
@@ -25,15 +33,12 @@
         <div class="topbar">
             <div class="topbar-content">
                 <div class="input-container">
-                    <div class="input-glow"></div>
-                    <input id="songName" type="text" placeholder="🎯 Tape ta réponse ici..." maxlength="100"
-                        autocomplete="off" spellcheck="false" />
-                    <div class="input-effects">
-                        <div class="typing-indicator"></div>
+                    <div class="input-wrapper">
+                        <div class="input-glow"></div>
+                        <input id="songName" type="text" placeholder="🎯 Tape ta réponse ici..." maxlength="100"
+                            autocomplete="off" spellcheck="false" />
                     </div>
                 </div>
-
-
             </div>
         </div>
 
@@ -41,6 +46,11 @@
         <div class="left-panel">
             <div class="panel-header">
                 <h3><span class="neon-icon">📚</span> Historique</h3>
+                <!-- Bouton plein écran pour mobile -->
+                <button id="historyFullscreenBtn" class="history-fullscreen-btn" style="display: none;"
+                    onclick="openHistoryFullscreen()" title="Voir l'historique en plein écran">
+                    <span>⛶</span>
+                </button>
                 <div class="panel-glow"></div>
             </div>
             <div class="history-content">
@@ -111,35 +121,43 @@
 
             <!-- Menu Items -->
             <div class="menu-items">
-                <div id="PlaylistDivBtn" class="menu-item playlist-btn">
+                <div id="PlaylistDivBtn" class="menu-item playlist-btn" data-tooltip="Playlist">
                     <span class="menu-icon">🎵</span>
                     <span class="menu-text">Playlist</span>
                     <div class="menu-glow"></div>
                 </div>
 
-                <div id="PlayerDivBtn" class="menu-item player-btn">
+                <div id="PlayerDivBtn" class="menu-item player-btn" data-tooltip="Lecteur">
                     <span class="menu-icon">🎧</span>
                     <span class="menu-text">Lecteur</span>
                     <div class="menu-glow"></div>
                 </div>
 
-                <div id="OptionsDivBtn" class="menu-item options-btn">
+                <div id="OptionsDivBtn" class="menu-item options-btn" data-tooltip="Options">
                     <span class="menu-icon">⚙️</span>
                     <span class="menu-text">Options</span>
                     <div class="menu-glow"></div>
                 </div>
-                <div id="ReRollDivBtn" class="menu-item options-btn">
+
+                <div id="ReRollDivBtn" class="menu-item options-btn" data-tooltip="Re-roll">
                     <span class="menu-icon">🔄</span>
                     <span class="menu-text">Re-roll</span>
                     <div class="menu-glow"></div>
                 </div>
-                <div id="autoswipe" class="menu-item autoswipe-btn">
+
+                <div id="autoswipe" class="menu-item autoswipe-btn" data-tooltip="AutoSwipe">
                     <span class="menu-icon">🤖</span>
                     <span class="menu-text">AutoSwipe</span>
                     <span id="autoswipeStatus" class="autoswipe-status">⏸️</span>
                     <div class="menu-glow"></div>
                 </div>
+<<<<<<< HEAD
                 <div id="Github" class="menu-item github-btn">
+=======
+
+                <div id="Github" class="menu-item github-btn" data-tooltip="GitHub"
+                    onclick="window.open('https://github.com/MXASoundNDEv/MxSpotyBrokenEyeTest', '_blank')">
+>>>>>>> 8fa796b (update)
                     <img id="githubIcon" src="https://github.githubassets.com/assets/GitHub-Mark-ea2971cee799.png"
                         alt="GitHub" class="menu-icon">
                     <span class="menu-text">Github</span>
@@ -148,6 +166,10 @@
             </div>
         </div>
     </div>
+
+    <!-- Overlay pour fermer le dropdown sur mobile -->
+    <div class="dropdown-overlay" id="dropdownOverlay"></div>
+
     <!-- AutoSwipe Progress Bar -->
     <div class="autoswipe-progress-container" id="autoswipeProgressContainer" style="display: none;">
         <div class="autoswipe-label">
@@ -180,6 +202,59 @@
                 // Classe pour optimisations mobile
                 document.body.classList.add('mobile-optimized');
 
+                // Gestion du dropdown menu pour mobile (768px et moins)
+                if (window.innerWidth <= 768) {
+                    const rightPanel = document.querySelector('.right-panel');
+                    const dropdownOverlay = document.getElementById('dropdownOverlay');
+
+                    // Fonction pour ouvrir/fermer le dropdown
+                    const toggleDropdown = (e) => {
+                        e.stopPropagation();
+                        const isOpen = rightPanel.classList.contains('open');
+
+                        if (isOpen) {
+                            closeDropdown();
+                        } else {
+                            openDropdown();
+                        }
+                    };
+
+                    const openDropdown = () => {
+                        rightPanel.classList.add('open');
+                        dropdownOverlay.classList.add('active');
+                        // Haptic feedback
+                        if ('vibrate' in navigator) {
+                            navigator.vibrate(10);
+                        }
+                    };
+
+                    const closeDropdown = () => {
+                        rightPanel.classList.remove('open');
+                        dropdownOverlay.classList.remove('active');
+                    };
+
+                    // Event listeners
+                    rightPanel.addEventListener('click', toggleDropdown);
+                    dropdownOverlay.addEventListener('click', closeDropdown);
+
+                    // Fermer sur escape
+                    document.addEventListener('keydown', (e) => {
+                        if (e.key === 'Escape') {
+                            closeDropdown();
+                        }
+                    });
+
+                    // Empêcher la propagation des clics sur les menu items
+                    const menuItems = document.querySelectorAll('.right-panel .menu-item');
+                    menuItems.forEach(item => {
+                        item.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            // Fermer le dropdown après avoir cliqué sur un élément
+                            setTimeout(closeDropdown, 200);
+                        });
+                    });
+                }
+
                 // Prévenir le zoom sur focus des inputs
                 const inputs = document.querySelectorAll('input[type="text"]');
                 inputs.forEach(input => {
@@ -196,6 +271,27 @@
                 window.addEventListener('resize', setVH);
                 window.addEventListener('orientationchange', () => setTimeout(setVH, 100));
 
+                // Re-initialiser les contrôles selon la nouvelle taille
+                const reinitMobileControls = () => {
+                    const rightPanel = document.querySelector('.right-panel');
+                    const dropdownOverlay = document.getElementById('dropdownOverlay');
+
+                    // Nettoyer les anciens event listeners et classes
+                    rightPanel.classList.remove('open');
+                    dropdownOverlay.classList.remove('active');
+
+                    // Re-détecter et réinitialiser
+                    if (window.innerWidth <= 768) {
+                        // Réappliquer la logique dropdown
+                        console.log('🔄 Dropdown activé pour largeur:', window.innerWidth);
+                    } else {
+                        console.log('🔄 Mode desktop activé pour largeur:', window.innerWidth);
+                    }
+                };
+
+                window.addEventListener('resize', reinitMobileControls);
+                window.addEventListener('orientationchange', () => setTimeout(reinitMobileControls, 200));
+
                 // Haptic feedback pour les interactions
                 if ('vibrate' in navigator) {
                     const interactiveElements = document.querySelectorAll('.menu-item, button, input');
@@ -211,9 +307,19 @@
                         'env(safe-area-inset-bottom)');
                 }
 
+                window.addEventListener("resize", () => {
+                    const topbar = document.querySelector(".topbar");
+                    if (window.innerHeight < 500) {
+                        topbar.style.position = "absolute";
+                    } else {
+                        topbar.style.position = "fixed";
+                    }
+                });
+
                 console.log('🎯 Optimisations mobile activées');
             }
 
+<<<<<<< HEAD
             // Gestion des clics sur les menu items mobiles (menu flottant)
             if (isMobile) {
                 const menuItems = document.querySelectorAll('.right-panel .menu-item');
@@ -280,6 +386,10 @@
                     });
                 }
             }
+=======
+            // Gestion des clics sur les menu items mobiles (plus utilisé car tout est en dropdown maintenant)
+            // Cette section n'est plus nécessaire car on utilise le dropdown pour tous les mobiles
+>>>>>>> 8fa796b (update)
         });
 
         // Fonction utilitaire pour tester le responsive
