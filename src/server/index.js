@@ -10,6 +10,13 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { checkSongMatch, getDetailedMatchAnalysis } from './utils/logic.js'; // Utilitaires pour la correspondance de chansons
+import {
+  register,
+  collectDefaultMetrics,
+  playerGuessesCounter,
+  correctGuessesCounter,
+  trackUniquePlayer
+} from './utils/metrics.js';
 
 // Chargement intelligent des variables d'environnement
 // Priorité: .env.<NODE_ENV> puis .env
@@ -21,6 +28,8 @@ if (runtimeEnv) {
 }
 // Toujours charger .env comme fallback (sans override pour conserver les spécifiques)
 dotenv.config();
+
+collectDefaultMetrics();
 
 const app = express();
 app.set('trust proxy', 1);
@@ -220,6 +229,11 @@ app.get('/login', (req, res) => {
 
 // Health check route
 app.get('/health', (req, res) => res.status(200).send('ok'));
+
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
+});
 
 app.get('/callback', async (req, res) => {
   const code = req.query.code;
@@ -574,9 +588,15 @@ app.post('/api/check-song', (req, res) => {
   }
 
   try {
+    trackUniquePlayer(req.ip);
+    playerGuessesCounter.inc();
+
     if (detailed) {
       // Analyse complète avec tous les détails
       const analysis = getDetailedMatchAnalysis(songName, currentTrack);
+      if (analysis.finalDecision) {
+        correctGuessesCounter.inc();
+      }
       return res.json({
         match: analysis.finalDecision,
         detailed: true,
@@ -585,10 +605,14 @@ app.post('/api/check-song', (req, res) => {
     } else {
       // Match simple avec informations de base
       const result = checkSongMatch(songName, currentTrack, true);
+      const isMatch = typeof result === 'boolean' ? result : result.isValid;
+      if (isMatch) {
+        correctGuessesCounter.inc();
+      }
       return res.json({
-        match: typeof result === 'boolean' ? result : result.isValid,
-        score: typeof result === 'object' ? result.score : (result ? 1 : 0),
-        quality: typeof result === 'object' ? result.quality : (result ? 'PERFECT' : 'POOR'),
+        match: isMatch,
+        score: typeof result === 'object' ? result.score : (isMatch ? 1 : 0),
+        quality: typeof result === 'object' ? result.quality : (isMatch ? 'PERFECT' : 'POOR'),
         detailed: false
       });
     }

@@ -60,6 +60,14 @@ npm run test:basic
 npm run test:jest
 ```
 
+### 📊 KPI Prometheus
+
+Le serveur expose des métriques pour Prometheus via `GET /metrics` :
+
+- `player_guesses_total` – nombre total de tentatives de devinettes.
+- `correct_guesses_total` – nombre de devinettes correctes.
+- `unique_players_total` – nombre de joueurs uniques.
+
 ### Corrections Principales Validées
 - **Fix erreur 500** : Les playlists privées retournent maintenant 403 au lieu de 500
 - **Gestion d'erreurs API** : Codes de statut Spotify correctement propagés
