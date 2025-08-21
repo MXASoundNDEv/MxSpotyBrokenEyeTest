@@ -151,13 +151,7 @@
                     <span id="autoswipeStatus" class="autoswipe-status">⏸️</span>
                     <div class="menu-glow"></div>
                 </div>
-<<<<<<< HEAD
                 <div id="Github" class="menu-item github-btn">
-=======
-
-                <div id="Github" class="menu-item github-btn" data-tooltip="GitHub"
-                    onclick="window.open('https://github.com/MXASoundNDEv/MxSpotyBrokenEyeTest', '_blank')">
->>>>>>> 8fa796b (update)
                     <img id="githubIcon" src="https://github.githubassets.com/assets/GitHub-Mark-ea2971cee799.png"
                         alt="GitHub" class="menu-icon">
                     <span class="menu-text">Github</span>
@@ -319,7 +313,6 @@
                 console.log('🎯 Optimisations mobile activées');
             }
 
-<<<<<<< HEAD
             // Gestion des clics sur les menu items mobiles (menu flottant)
             if (isMobile) {
                 const menuItems = document.querySelectorAll('.right-panel .menu-item');
@@ -341,14 +334,14 @@
                 githubBtn.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    
+
                     const githubUrl = 'https://github.com/MXASoundNDEv/MxSpotyBrokenEyeTest';
-                    
+
                     // Tentative d'ouverture dans un nouvel onglet
                     try {
                         // Méthode 1: window.open avec fallback
                         const newWindow = window.open(githubUrl, '_blank', 'noopener,noreferrer');
-                        
+
                         // Si window.open échoue (bloqué par le navigateur)
                         if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
                             // Méthode 2: Créer un lien temporaire et le cliquer
@@ -362,23 +355,23 @@
                         }
                     } catch (error) {
                         console.warn('Erreur lors de l\'ouverture du lien GitHub:', error);
-                        
+
                         // Méthode 3: Fallback - redirection dans le même onglet
                         if (confirm('Ouvrir le repository GitHub ? (Cela vous redirigera vers GitHub)')) {
                             window.location.href = githubUrl;
                         }
                     }
                 });
-                
+
                 // Feedback visuel pour le bouton
                 githubBtn.addEventListener('mouseenter', () => {
                     githubBtn.style.transform = 'translateY(-2px)';
                 });
-                
+
                 githubBtn.addEventListener('mouseleave', () => {
                     githubBtn.style.transform = 'translateY(0)';
                 });
-                
+
                 // Feedback tactile sur mobile
                 if ('vibrate' in navigator) {
                     githubBtn.addEventListener('touchstart', () => {
@@ -386,10 +379,6 @@
                     });
                 }
             }
-=======
-            // Gestion des clics sur les menu items mobiles (plus utilisé car tout est en dropdown maintenant)
-            // Cette section n'est plus nécessaire car on utilise le dropdown pour tous les mobiles
->>>>>>> 8fa796b (update)
         });
 
         // Fonction utilitaire pour tester le responsive
