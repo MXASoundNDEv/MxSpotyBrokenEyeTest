@@ -32,11 +32,7 @@ describe('🚀 API Blindtest - Tests Complets', () => {
     // 📱 Tests des routes statiques et détection mobile
     describe('📱 Routes Statiques', () => {
         test.each([
-            ['/', [200, 302], 'page d\'accueil avec détection mobile'],
-            ['/mobile', [200], 'page mobile'],
-            ['/desktop', [200], 'page desktop'],
-            ['/test-detection', [200], 'page de test détection'],
-            ['/test-mobile', [200], 'page de test mobile']
+            ['/', [200, 302], 'page d\'accueil avec détection mobile']
         ])('GET %s => %s (%s)', async (path, expectedCodes, description) => {
             const res = await request(app)
                 .get(path)

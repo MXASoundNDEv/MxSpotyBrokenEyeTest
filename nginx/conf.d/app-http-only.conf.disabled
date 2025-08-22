@@ -1,0 +1,39 @@
+# Configuration HTTP uniquement (fallback)
+server {
+    listen 80;
+    server_name brokeneye.space www.brokeneye.space;
+    
+    # Servir les challenges Let's Encrypt
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        try_files $uri $uri/ =404;
+    }
+    
+    # Configuration principale
+    location / {
+        proxy_pass http://192.168.0.47:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto http;
+        proxy_cache_bypass $http_upgrade;
+        proxy_redirect off;
+    }
+
+    # Endpoint de santé pour les tests
+    location /health {
+        proxy_pass http://192.168.0.47:3000/health;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto http;
+    }
+
+    # Gestion des erreurs
+    error_log /var/log/nginx/brokeneye_error.log;
+    access_log /var/log/nginx/brokeneye_access.log;
+}

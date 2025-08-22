@@ -51,6 +51,13 @@ const utils = {
         if (token && token !== storedToken) {
             localStorage.setItem('spotify_access_token', token);
             
+            // Sauvegarder aussi le refresh token s'il est fourni
+            if (hashParams.refresh_token || urlParams.refresh_token) {
+                const refreshToken = hashParams.refresh_token || urlParams.refresh_token;
+                localStorage.setItem('spotify_refresh_token', refreshToken);
+                console.log('🔄 Refresh token sauvegardé');
+            }
+            
             // Calculer l'expiration (3600 secondes par défaut pour Spotify)
             const expiresIn = hashParams.expires_in || urlParams.expires_in || 3600;
             const expiryTime = Date.now() + (parseInt(expiresIn) * 1000);
@@ -123,12 +130,21 @@ const utils = {
                 console.log('✅ Token Spotify valide');
                 return true;
             } else if (response.status === 401) {
-                console.warn('🔐 Token Spotify invalide/expiré');
-                // Nettoyer le token invalide
-                localStorage.removeItem('spotify_access_token');
-                localStorage.removeItem('spotify_token_expiry');
-                sessionStorage.removeItem('spotify_access_token');
-                return false;
+                console.warn('🔐 Token Spotify invalide/expiré, tentative de rafraîchissement...');
+                
+                // Essayer de rafraîchir le token automatiquement
+                const refreshed = await utils.refreshToken();
+                if (refreshed) {
+                    console.log('✅ Token rafraîchi avec succès');
+                    return true;
+                } else {
+                    console.warn('❌ Impossible de rafraîchir le token');
+                    // Nettoyer le token invalide
+                    localStorage.removeItem('spotify_access_token');
+                    localStorage.removeItem('spotify_token_expiry');
+                    sessionStorage.removeItem('spotify_access_token');
+                    return false;
+                }
             }
         } catch (error) {
             console.error('❌ Erreur lors de la validation du token:', error);
@@ -136,6 +152,59 @@ const utils = {
         }
         
         return false;
+    },
+
+    // Fonction pour rafraîchir automatiquement le token
+    refreshToken: async () => {
+        const refreshToken = localStorage.getItem('spotify_refresh_token');
+        if (!refreshToken) {
+            console.warn('[⚠️] Pas de refresh token disponible');
+            return false;
+        }
+
+        try {
+            console.log('[🔄] Tentative de rafraîchissement du token...');
+            
+            const response = await fetch('/api/refresh-token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ refresh_token: refreshToken })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            
+            // Sauvegarder le nouveau token
+            localStorage.setItem('spotify_access_token', data.access_token);
+            const expiryTime = Date.now() + (parseInt(data.expires_in) * 1000);
+            localStorage.setItem('spotify_token_expiry', expiryTime.toString());
+            
+            // Mettre à jour le refresh token s'il a changé
+            if (data.refresh_token) {
+                localStorage.setItem('spotify_refresh_token', data.refresh_token);
+            }
+            
+            // Mettre à jour l'état de l'application
+            appState.token = data.access_token;
+            
+            console.log('[✅] Token rafraîchi avec succès');
+            return true;
+            
+        } catch (error) {
+            console.error('[❌] Erreur lors du rafraîchissement du token:', error);
+            
+            // Nettoyer les tokens invalides
+            localStorage.removeItem('spotify_access_token');
+            localStorage.removeItem('spotify_refresh_token');
+            localStorage.removeItem('spotify_token_expiry');
+            
+            return false;
+        }
     }
 };
 
@@ -196,11 +265,17 @@ addEventListener('DOMContentLoaded', () => {
     
     if (appState.token) {
         console.log('🎵 Initialisation avec token valide');
+        
+        // Nettoyer l'URL des tokens pour la sécurité
+        if (window.location.hash.includes('access_token')) {
+            console.log('🧹 Nettoyage de l\'URL des tokens');
+            history.replaceState(null, null, window.location.pathname);
+        }
+        
         initPlayer();
     } else {
         console.warn('❌ Aucune connexion Spotify valide détectée');
         SpotifyconnectModal();
-
     }
 });
 
@@ -1049,14 +1124,27 @@ function clearPlaylist() {
 // User playlists
 async function getUserPlaylists() {
     try {
+        console.log('[📋] Récupération des playlists utilisateur...');
         const response = await fetch(`/api/me/playlists?token=${appState.token}`);
         
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            const errorData = await response.json().catch(() => ({ error: response.statusText }));
+            
+            // Si le token est expiré, rediriger vers la connexion
+            if (response.status === 401 || errorData.needsReauth) {
+                console.warn('[⚠️] Token expiré, redirection vers la connexion...');
+                utils.showError('Session expirée', 'Veuillez vous reconnecter');
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 2000);
+                return [];
+            }
+            
+            throw new Error(`HTTP ${response.status}: ${errorData.error || response.statusText}`);
         }
         
         const apiPlaylists = await response.json();
-        //console.log('📋 Playlists récupérées:', apiPlaylists.length);
+        console.log('[✅] Playlists récupérées avec succès:', apiPlaylists.length);
         
         return apiPlaylists.map(playlist => ({
             id: playlist.id,
@@ -1066,7 +1154,7 @@ async function getUserPlaylists() {
         
     } catch (error) {
         console.error('[🔥] Erreur lors de la récupération des playlists:', error);
-        utils.showError('Erreur lors de la récupération des playlists', error);
+        utils.showError('Erreur lors de la récupération des playlists', error.message || error);
         return [];
     }
 }

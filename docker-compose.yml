@@ -1,0 +1,74 @@
+# ATTENTION: Ce fichier n'est PAS utilisé par le script de déploiement
+# Le script deploy-production.sh utilise Podman directement
+# Ce fichier est conservé pour référence et développement local uniquement
+
+version: '3.9'
+
+services:
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: blindtest_app_compose
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - METRICS_PORT=9100
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - SPOTIFY_REDIRECT_URI=${SPOTIFY_REDIRECT_URI}
+    env_file:
+      - .env
+    networks:
+      - blindtest_network
+    restart: unless-stopped
+    expose:
+      - "3000"
+      - "9100"
+    ports:
+      - "9100:9100"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "--timeout=5", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  nginx:
+    image: docker.io/nginx:alpine
+    container_name: blindtest_nginx_compose
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./data/ssl:/etc/letsencrypt/live/brokeneye.space:ro
+      - ./data/letsencrypt:/var/www/certbot:ro
+    networks:
+      - blindtest_network
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  certbot:
+    image: docker.io/certbot/certbot:latest
+    container_name: blindtest_certbot_compose
+    volumes:
+      - ./data/certbot:/etc/letsencrypt
+      - ./data/letsencrypt:/var/www/certbot
+    networks:
+      - blindtest_network
+    entrypoint: /bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done;'
+    restart: unless-stopped
+
+networks:
+  blindtest_network:
+    driver: bridge
