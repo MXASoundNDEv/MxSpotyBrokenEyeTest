@@ -1,0 +1,117 @@
+# 🐳 Dockerfile optimisé pour Podman sur Ubuntu 24.04
+# Multi-stage build pour optimisation de taille et sécurité
+
+# ==========================================
+# Stage 1: Builder - Installation dépendances
+# ==========================================
+FROM docker.io/library/node:20-alpine AS builder
+
+# Métadonnées
+LABEL maintainer="MxSpoty BlindTest Team"
+LABEL description="Spotify-powered blind test game - Builder stage"
+LABEL ubuntu-target="24.04"
+LABEL podman-optimized="true"
+
+# Variables d'environnement pour le build
+ENV NODE_ENV=production
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false
+ENV NPM_CONFIG_AUDIT=false
+
+# Installation des outils système nécessaires
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    curl \
+    git
+
+# Création utilisateur non-root pour sécurité
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Répertoire de travail
+WORKDIR /app
+
+# Copie des fichiers de dépendances
+COPY package*.json ./
+
+# Installation des dépendances avec optimisations
+RUN npm ci --only=production --prefer-offline --no-audit && \
+    npm cache clean --force
+
+# ==========================================
+# Stage 2: Runner - Image finale optimisée  
+# ==========================================
+FROM docker.io/library/node:20-alpine AS runner
+
+# Métadonnées étendues
+LABEL org.opencontainers.image.title="MxSpoty BlindTest"
+LABEL org.opencontainers.image.description="Spotify-powered blind test game optimized for Podman"
+LABEL org.opencontainers.image.vendor="MxSpoty Team"
+LABEL org.opencontainers.image.licenses="GPL-3.0"
+LABEL org.opencontainers.image.url="https://github.com/MXASoundNDEv/MxSpotyBrokenEyeTest"
+LABEL org.opencontainers.image.documentation="https://github.com/MXASoundNDEv/MxSpotyBrokenEyeTest/blob/main/README.md"
+
+# Variables d'environnement de production
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOST=0.0.0.0
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Installation des outils système minimum requis
+RUN apk add --no-cache \
+    curl \
+    ca-certificates \
+    tini \
+    dumb-init && \
+    # Mise à jour des certificats CA
+    update-ca-certificates
+
+# Création utilisateur non-root avec UID/GID spécifiques pour Podman
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 -G nodejs
+
+# Répertoire de travail
+WORKDIR /app
+
+# Copie des node_modules depuis le builder
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+
+# Copie du code source avec permissions appropriées
+COPY --chown=nodejs:nodejs . .
+
+# Configuration spécifique Podman/Ubuntu
+RUN mkdir -p /app/logs /app/tmp /app/data && \
+    chown -R nodejs:nodejs /app && \
+    chmod -R 755 /app && \
+    # Optimisation pour Podman rootless
+    chmod +x scripts/*.sh 2>/dev/null || true
+
+# Exposition du port
+EXPOSE $PORT
+
+# Configuration de santé pour containers
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
+
+# Basculement vers l'utilisateur non-root
+USER nodejs
+
+# Point d'entrée avec init system pour signaux
+ENTRYPOINT ["dumb-init", "--"]
+
+# Commande par défaut
+CMD ["node", "src/server/index.js"]
+
+# ==========================================
+# Optimisations spécifiques Podman
+# ==========================================
+
+# 1. Multi-stage build pour réduction de taille
+# 2. Utilisateur non-root pour sécurité
+# 3. Health check intégré
+# 4. Init system pour gestion signaux
+# 5. Permissions optimisées pour rootless
+# 6. Labels OCI complets
+# 7. Cache layers optimisé

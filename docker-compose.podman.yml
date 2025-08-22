@@ -1,0 +1,134 @@
+# 🐳 Docker Compose pour Podman - MxSpoty BlindTest Ubuntu 24
+version: '3.8'
+
+services:
+  # Application principale
+  mxspoty-blindtest:
+    build:
+      context: .
+      dockerfile: Dockerfile.podman
+    container_name: mxspoty-blindtest-app
+    restart: unless-stopped
+    
+    # Configuration réseau
+    ports:
+      - "3000:3000"
+    networks:
+      - mxspoty-network
+    
+    # Variables d'environnement
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+    
+    # Configuration des volumes (rootless friendly)
+    volumes:
+      - ./logs:/app/logs:Z
+      - ./data:/app/data:Z
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Sécurité Podman
+    security_opt:
+      - label=disable
+    
+    # Ressources limitées
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # Nginx reverse proxy (optionnel)
+  nginx:
+    image: docker.io/library/nginx:alpine
+    container_name: mxspoty-nginx
+    restart: unless-stopped
+    
+    ports:
+      - "80:80"
+      - "443:443"
+    
+    networks:
+      - mxspoty-network
+    
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro,Z
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro,Z
+      - ./logs/nginx:/var/log/nginx:Z
+    
+    depends_on:
+      mxspoty-blindtest:
+        condition: service_healthy
+    
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Monitoring avec Prometheus (optionnel)
+  prometheus:
+    image: docker.io/prom/prometheus:latest
+    container_name: mxspoty-prometheus
+    restart: unless-stopped
+    
+    ports:
+      - "9090:9090"
+    
+    networks:
+      - mxspoty-network
+    
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro,Z
+      - prometheus_data:/prometheus:Z
+    
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+
+# Configuration réseau
+networks:
+  mxspoty-network:
+    name: mxspoty-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Volumes nommés
+volumes:
+  prometheus_data:
+    name: mxspoty-prometheus-data
+    driver: local
+
+# ==========================================
+# Configuration spécifique Podman/Ubuntu 24
+# ==========================================
+
+# Utilisation:
+# 1. Installation: podman-compose --help
+# 2. Démarrage: podman-compose up -d
+# 3. Logs: podman-compose logs -f
+# 4. Arrêt: podman-compose down
+# 5. Rebuild: podman-compose up --build -d
+
+# Notes Podman:
+# - Utilise des volumes avec :Z pour SELinux
+# - Compatible rootless
+# - security_opt pour désactiver SELinux si besoin
+# - Réseau bridge custom pour isolation

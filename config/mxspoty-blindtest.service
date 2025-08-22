@@ -1,0 +1,69 @@
+# 🔧 Service systemd pour MxSpoty BlindTest avec Podman
+# /etc/systemd/system/mxspoty-blindtest.service
+
+[Unit]
+Description=MxSpoty BlindTest - Spotify Powered Blind Test Game
+Documentation=https://github.com/MxSpoty/blindtest
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=%i
+
+[Service]
+Type=forking
+RemainAfterExit=yes
+ExecStartPre=/bin/bash -c 'if ! /usr/bin/podman pod exists mxspoty-pod; then /usr/bin/podman pod create --name mxspoty-pod --publish 80:80 --publish 443:443; fi'
+ExecStart=/bin/bash -c 'cd /opt/mxspoty-blindtest && /opt/mxspoty-blindtest/scripts/deploy-podman-ubuntu24.sh --start'
+ExecStop=/bin/bash -c '/usr/bin/podman pod stop -t 30 mxspoty-pod || true; /usr/bin/podman pod rm -f mxspoty-pod || true'
+ExecReload=/bin/bash -c 'cd /opt/mxspoty-blindtest && /opt/mxspoty-blindtest/scripts/deploy-podman-ubuntu24.sh --reload'
+
+# Configuration utilisateur
+User=mxspoty
+Group=mxspoty
+WorkingDirectory=/opt/mxspoty-blindtest
+
+# Variables d'environnement
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=PODMAN_USERNS=keep-id
+
+# Sécurité
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/mxspoty-blindtest /tmp /var/log/mxspoty-blindtest
+PrivateDevices=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=false
+LockPersonality=true
+MemoryDenyWriteExecute=false
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+# Limites de ressources
+LimitNOFILE=65536
+LimitNPROC=4096
+MemoryLimit=1G
+TasksMax=4096
+
+# Redémarrage automatique
+Restart=always
+RestartSec=10
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Timeout
+TimeoutStartSec=300
+TimeoutStopSec=30
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mxspoty-blindtest
+
+[Install]
+WantedBy=multi-user.target

@@ -1,4 +1,4 @@
-name: 🧪 Tests API Blindtest
+name: 🧪 Tests Complets BlindTest
 
 on:
   push:
@@ -7,9 +7,9 @@ on:
     branches: [ main, Mobile ]
 
 jobs:
-  # 🚀 Tests sans token (toujours exécutés)
-  tests-sans-token:
-    name: 📱 Tests Statiques + Sécurité
+  # 🚀 Tests de base (toujours exécutés)
+  tests-base:
+    name: � Tests Métriques + API Base
     runs-on: ubuntu-latest
 
     steps:
@@ -25,20 +25,33 @@ jobs:
     - name: 📦 Installation des dépendances
       run: npm ci
 
-    - name: 🧪 Tests sans token requis
-      run: node tests/test-runner-basic.js
+    - name: 🧪 Tests métriques Prometheus
+      run: npm run test:metrics-only
       env:
         NODE_ENV: test
-        SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID || 'test_client_id' }}
-        SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET || 'test_client_secret' }}
+
+    - name: 🧪 Tests API de base
+      run: npm run test:basic
+      env:
+        NODE_ENV: test
+        SPOTIFY_CLIENT_ID: 'test_client_id'
+        SPOTIFY_CLIENT_SECRET: 'test_client_secret'
         SPOTIFY_REDIRECT_URI: http://127.0.0.1:3000/callback
         PORT: 3000
 
-  # 🔐 Tests avec token (si secrets disponibles)
-  tests-avec-token:
+    - name: 📋 Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-base
+        path: tests/test-results.json
+
+  # 🔐 Tests complets avec token Spotify (si disponible)
+  tests-complets:
     name: 🔑 Tests API Spotify Complets
     runs-on: ubuntu-latest
-    needs: tests-sans-token
+    needs: tests-base
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
     - name: 📥 Checkout du code  
@@ -53,14 +66,13 @@ jobs:
     - name: 📦 Installation des dépendances
       run: npm ci
 
-    - name: 🚀 Démarrage serveur de test
+    - name: 🚀 Tests complets avec serveur
       run: |
         npm run start &
         SERVER_PID=$!
         echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
         
-        # Attente du démarrage du serveur
-        echo "⏳ Attente démarrage serveur..."
+        # Attente du démarrage
         for i in {1..30}; do
           if curl -s http://localhost:3000 >/dev/null 2>&1; then
             echo "✅ Serveur démarré"
@@ -68,26 +80,22 @@ jobs:
           fi
           sleep 1
         done
+        
+        # Tests complets
+        npm run test:complete
+        
+        # Arrêt du serveur
+        kill $SERVER_PID 2>/dev/null || true
       env:
-        SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID || 'test_client_id' }}
-        SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET || 'test_client_secret' }}
+        SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+        SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
         SPOTIFY_REDIRECT_URI: http://localhost:3000/callback
         PORT: 3000
         NODE_ENV: test
 
-    - name: 🧪 Tests API complets
-      run: npm test
-      env:
-        SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID || 'test_client_id' }}
-        SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET || 'test_client_secret' }}
-        SPOTIFY_REDIRECT_URI: http://localhost:3000/callback
-        SPOTIFY_TEST_TOKEN: invalid_test_token
-        PORT: 3000
-        NODE_ENV: test
-
-    - name: 🛑 Arrêt du serveur
+    - name: � Upload test results complets
+      uses: actions/upload-artifact@v3
       if: always()
-      run: |
-        if [ -n "$SERVER_PID" ]; then
-          kill $SERVER_PID 2>/dev/null || true
-        fi
+      with:
+        name: test-results-complete
+        path: tests/test-results.json
